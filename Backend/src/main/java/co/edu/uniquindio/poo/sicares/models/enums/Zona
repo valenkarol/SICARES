@@ -1,0 +1,6 @@
+package com.sicares.models.enums;
+
+public enum Zona {
+    RURAL,
+    URBANA
+}
