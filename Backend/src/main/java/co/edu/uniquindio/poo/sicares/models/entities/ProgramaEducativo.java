@@ -1,8 +1,9 @@
 package co.edu.uniquindio.poo.sicares.models.entities;
 
 
-import com.sicares.models.enums.Modalidad;
-import com.sicares.models.enums.NivelEducativo;
+
+import co.edu.uniquindio.poo.sicares.models.enums.Modalidad;
+import co.edu.uniquindio.poo.sicares.models.enums.NivelEducativo;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

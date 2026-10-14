@@ -1,6 +1,7 @@
 package co.edu.uniquindio.poo.sicares.models.entities;
 
-import com.sicares.models.enums.EstadoRuta;
+
+import co.edu.uniquindio.poo.sicares.models.enums.EstadoRuta;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

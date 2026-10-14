@@ -1,6 +1,7 @@
 package co.edu.uniquindio.poo.sicares.models.entities;
 
-import com.sicares.models.enums.Rol;
+
+import co.edu.uniquindio.poo.sicares.models.enums.Rol;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

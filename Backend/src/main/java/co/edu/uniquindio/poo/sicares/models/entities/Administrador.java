@@ -22,6 +22,6 @@ public class Administrador extends Usuario {
         setRol(Rol.ADMINISTRADOR);
     }
 
-    private void setRol(Rol rol) {
+    public void setRol(Rol rol) {
     }
 }

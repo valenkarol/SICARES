@@ -1,8 +1,8 @@
 package co.edu.uniquindio.poo.sicares.models.entities;
 
-import com.sicares.exceptions.ReglaNegocioException;
-import com.sicares.models.enums.EstadoDocumento;
-import com.sicares.models.enums.EstadoPostulacion;
+import co.edu.uniquindio.poo.sicares.exceptions.ReglaNegocioException;
+import co.edu.uniquindio.poo.sicares.models.enums.EstadoDocumento;
+import co.edu.uniquindio.poo.sicares.models.enums.EstadoPostulacion;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

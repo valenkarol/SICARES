@@ -1,6 +1,7 @@
 package co.edu.uniquindio.poo.sicares.models.entities;
 
-import com.sicares.models.enums.TipoBeneficio;
+
+import co.edu.uniquindio.poo.sicares.models.enums.TipoBeneficio;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
