@@ -1,6 +1,7 @@
 package co.edu.uniquindio.poo.sicares.models.entities;
 
 
+
 import co.edu.uniquindio.poo.sicares.models.enums.Rol;
 import jakarta.persistence.Entity;
 import jakarta.persistence.PrimaryKeyJoinColumn;
@@ -19,5 +20,8 @@ public class Administrador extends Usuario {
 
     public Administrador() {
         setRol(Rol.ADMINISTRADOR);
+    }
+
+    private void setRol(Rol rol) {
     }
 }
