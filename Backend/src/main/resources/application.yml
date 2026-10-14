@@ -1,0 +1,64 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: SICARES
+
+  # ---------- Base de datos MySQL ----------
+  datasource:
+    url: jdbc:mysql://localhost:3306/sicares_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=America/Bogota&allowPublicKeyRetrieval=true
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:root}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          time_zone: America/Bogota
+
+  # ---------- Carga de documentos ----------
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 10MB
+
+  # ---------- Correo (opcional) ----------
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USER:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+
+# ---------- Propiedades propias de SICARES ----------
+sicares:
+  jwt:
+    secret: ${JWT_SECRET:c2ljYXJlcy1jbGF2ZS1zZWNyZXRhLWRlLWRlc2Fycm9sbG8tY2FtYmlhci1lbi1wcm9kdWNjaW9u}
+    expiracion-minutos: 480
+  cors:
+    origenes-permitidos: ${CORS_ORIGINS:http://localhost:4200}
+  almacenamiento:
+    ruta-documentos: ${UPLOAD_DIR:./uploads}
+  notificaciones:
+    correo-habilitado: ${MAIL_ENABLED:false}
+    remitente: ${MAIL_USER:no-reply@sicares.co}
+    dias-anticipacion-recordatorio: 3
+    cron-recordatorios: "0 0 7 * * *"
+  admin-inicial:
+    correo: admin@sicares.co
+    contrasena: Admin123*
+  politica-datos:
+    version: "1.0"
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
