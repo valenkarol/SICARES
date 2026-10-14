@@ -1,6 +1,7 @@
 package co.edu.uniquindio.poo.sicares.models.entities;
 
-import com.sicares.models.enums.Rol;
+
+import co.edu.uniquindio.poo.sicares.models.enums.Rol;
 import jakarta.persistence.Entity;
 import jakarta.persistence.PrimaryKeyJoinColumn;
 import jakarta.persistence.Table;
