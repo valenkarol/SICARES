@@ -35,3 +35,7 @@ sicares:
     contrasena: Admin123*
   politica-datos:
     version: "1.0"
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html

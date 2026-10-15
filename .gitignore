@@ -1,45 +1,23 @@
-# =========================
-# Gradle
-# =========================
-.gradle/
-build/
-!gradle/wrapper/gradle-wrapper.jar
+# ---------- Backend (Gradle / IntelliJ) ----------
+backend/.gradle/
+backend/build/
+backend/out/
+backend/uploads/
+backend/bin/
+!backend/gradle/wrapper/gradle-wrapper.jar
 
-# =========================
-# IntelliJ IDEA
-# =========================
+# ---------- Frontend (Angular) ----------
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+
+# ---------- IDE / SO ----------
 .idea/
-*.iws
 *.iml
-*.ipr
-
-# =========================
-# Compilados
-# =========================
-*.class
-
-# =========================
-# Logs
-# =========================
-*.log
-
-# =========================
-# Sistema operativo
-# =========================
+.vscode/
 .DS_Store
 Thumbs.db
 
-# =========================
-# Variables de entorno / secretos
-# =========================
+# ---------- Secretos ----------
 .env
-.env.*
-!.env.example
-
-# =========================
-# Archivos temporales
-# =========================
-*.tmp
-*.temp
-*.swp
-*.swo
+*.env
