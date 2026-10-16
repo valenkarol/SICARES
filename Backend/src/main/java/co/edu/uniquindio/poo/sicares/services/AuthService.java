@@ -19,7 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * HU-01 Registro, HU-02 Inicio de sesión.
+ * Registro, Inicio de sesión.
  * Implementa iniciarSesion(), cerrarSesion() y cambiarContrasena() de la clase Usuario del UML.
  */
 @Service

@@ -14,7 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.List;
 
-/** Administrador.gestionarUsuarios() e indicadores (KPIs) del Sprint 2. */
+/** Administrador.gestionarUsuarios() e indicadores . */
 @Service
 @RequiredArgsConstructor
 public class UsuarioService {
