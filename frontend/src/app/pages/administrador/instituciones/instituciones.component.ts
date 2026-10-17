@@ -1,116 +1,111 @@
-import { CurrencyPipe, DatePipe } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AlertaComponent } from '../../../components/alerta.component';
-import { Oportunidad, Programa } from '../../../models/oferta.model';
-import { Catalogos } from '../../../models/perfil.model';
-import { CatalogoService } from '../../../services/catalogo.service';
-import { FiltrosPrograma, OfertaService } from '../../../services/oferta.service';
+import { Institucion } from '../../../models/oferta.model';
+import { OfertaService } from '../../../services/oferta.service';
 import { EtiquetaPipe } from '../../../utils/etiqueta.pipe';
 import { mensajeError } from '../../../utils/errores';
 
-/** HU-12 Consultar programas educativos con filtros. */
+/** HU-13 Gestionar instituciones educativas. */
 @Component({
-  selector: 'app-oportunidades',
+  selector: 'app-instituciones',
   standalone: true,
-  imports: [FormsModule, CurrencyPipe, DatePipe, EtiquetaPipe, AlertaComponent],
+  imports: [FormsModule, AlertaComponent, EtiquetaPipe],
   template: `
-    <h1>Oferta educativa</h1>
-    <p class="suave">Consulta los programas disponibles. Para recibir recomendaciones personalizadas genera tu ruta.</p>
-
-    <div class="card">
-      <div class="grid-2">
-        <div class="campo"><label>Buscar</label>
-          <input [(ngModel)]="filtros.texto" placeholder="Nombre del programa" (keyup.enter)="buscar()" /></div>
-        <div class="campo"><label>Nivel</label>
-          <select [(ngModel)]="filtros.nivel">
-            <option value="">Todos</option>
-            @for (n of catalogos?.nivelesEducativos ?? []; track n) { <option [value]="n">{{ n | etiqueta }}</option> }
-          </select></div>
-        <div class="campo"><label>Modalidad</label>
-          <select [(ngModel)]="filtros.modalidad">
-            <option value="">Todas</option>
-            @for (m of catalogos?.modalidades ?? []; track m) { <option [value]="m">{{ m | etiqueta }}</option> }
-          </select></div>
-        <div class="campo"><label>Área</label>
-          <select [(ngModel)]="filtros.area">
-            <option value="">Todas</option>
-            @for (a of catalogos?.areasConocimiento ?? []; track a) { <option [value]="a">{{ a }}</option> }
-          </select></div>
-        <div class="campo"><label>Municipio</label>
-          <input [(ngModel)]="filtros.municipio" placeholder="Ej. Armenia" /></div>
-      </div>
-      <div class="fila">
-        <button class="btn" (click)="buscar()">Buscar</button>
-        <button class="btn btn-sec" (click)="limpiar()">Limpiar</button>
-      </div>
-    </div>
-
+    <h1>Instituciones educativas</h1>
     <app-alerta [mensaje]="error" />
 
-    @for (p of programas; track p.id) {
-      <div class="card">
-        <div class="fila entre">
-          <h3>{{ p.nombre }}</h3>
-          @if (p.gratuito) { <span class="badge badge-ok">Gratuito</span> }
-          @else { <span class="badge">{{ p.costoPeriodo | currency: 'COP' : 'symbol-narrow' : '1.0-0' }} / periodo</span> }
+    <div class="card">
+      <h3>{{ editandoId ? 'Editar institución' : 'Nueva institución' }}</h3>
+      <form #f="ngForm" (ngSubmit)="guardar()">
+        <div class="grid-2">
+          <div class="campo"><label>Nombre *</label><input name="nombre" [(ngModel)]="form.nombre" required /></div>
+          <div class="campo"><label>NIT *</label><input name="nit" [(ngModel)]="form.nit" required /></div>
+          <div class="campo"><label>Tipo *</label>
+            <select name="tipo" [(ngModel)]="form.tipo" required>
+              <option value="PUBLICA">Pública</option><option value="PRIVADA">Privada</option>
+            </select></div>
+          <div class="campo"><label>Departamento *</label><input name="depto" [(ngModel)]="form.departamento" required /></div>
+          <div class="campo"><label>Municipio *</label><input name="mpio" [(ngModel)]="form.municipio" required /></div>
+          <div class="campo"><label>Correo de contacto</label><input type="email" name="correo" [(ngModel)]="form.correoContacto" /></div>
         </div>
-        <p class="suave">
-          {{ p.institucionNombre }} ({{ p.institucionTipo | etiqueta }}) · {{ p.nivel | etiqueta }} ·
-          {{ p.modalidad | etiqueta }} · {{ p.municipio }} · {{ p.duracionPeriodos }} periodos · {{ p.areaConocimiento }}
-        </p>
-        @if (p.requisitos.length) {
-          <p><strong>Requisitos:</strong>
-            @for (r of p.requisitos; track r.id; let ultimo = $last) { {{ r.nombre }}{{ ultimo ? '' : ', ' }} }
-          </p>
-        }
-        @if (p.beneficios.length) {
-          <p><strong>Beneficios:</strong>
-            @for (b of p.beneficios; track b.id) {
-              <span class="badge badge-aviso">{{ b.nombre }} ({{ b.porcentajeCobertura }}%)</span>&nbsp;
-            }
-          </p>
-        }
-        @for (o of convocatoriasDe(p.id); track o.id) {
-          <p class="suave">Convocatoria {{ o.periodoAcademico }}: inscripciones hasta
-            <strong>{{ o.fechaCierreInscripcion | date: 'dd/MM/yyyy' }}</strong> ({{ o.diasParaCierre }} días) · {{ o.cupos }} cupos</p>
-        }
-      </div>
-    } @empty {
-      <p class="vacio">No se encontraron programas con esos filtros.</p>
-    }
+        <div class="fila">
+          <button class="btn" [disabled]="f.invalid">Guardar</button>
+          @if (editandoId) { <button type="button" class="btn btn-sec" (click)="nuevo()">Cancelar</button> }
+        </div>
+      </form>
+    </div>
+
+    <div class="card tabla-scroll">
+      <table class="tabla">
+        <thead><tr><th>Nombre</th><th>NIT</th><th>Tipo</th><th>Ubicación</th><th>Programas</th><th></th></tr></thead>
+        <tbody>
+          @for (i of lista; track i.id) {
+            <tr>
+              <td>{{ i.nombre }}<div class="suave">{{ i.correoContacto }}</div></td>
+              <td>{{ i.nit }}</td>
+              <td>{{ i.tipo | etiqueta }}</td>
+              <td>{{ i.municipio }}, {{ i.departamento }}</td>
+              <td>{{ i.totalProgramas }}</td>
+              <td class="fila">
+                <button class="btn btn-sec btn-chico" (click)="editar(i)">Editar</button>
+                <button class="btn btn-peligro btn-chico" (click)="eliminar(i)">Eliminar</button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
   `,
 })
-export class OportunidadesComponent implements OnInit {
+export class InstitucionesComponent implements OnInit {
   private oferta = inject(OfertaService);
-  private catalogoService = inject(CatalogoService);
-
-  catalogos: Catalogos | null = null;
-  programas: Programa[] = [];
-  oportunidades: Oportunidad[] = [];
-  filtros: FiltrosPrograma = { texto: '', nivel: '', modalidad: '', area: '', municipio: '' };
+  lista: Institucion[] = [];
+  form: Institucion = this.vacio();
+  editandoId: number | null = null;
   error: string | null = null;
 
   ngOnInit(): void {
-    this.catalogoService.obtener().subscribe((c) => (this.catalogos = c));
-    this.oferta.oportunidades(true).subscribe((o) => (this.oportunidades = o));
-    this.buscar();
+    this.cargar();
   }
 
-  buscar(): void {
+  cargar(): void {
+    this.oferta.instituciones().subscribe((l) => (this.lista = l));
+  }
+
+  nuevo(): void {
+    this.form = this.vacio();
+    this.editandoId = null;
+  }
+
+  editar(i: Institucion): void {
+    this.form = { ...i };
+    this.editandoId = i.id ?? null;
+  }
+
+  guardar(): void {
     this.error = null;
-    this.oferta.programas(this.filtros).subscribe({
-      next: (p) => (this.programas = p),
+    const peticion = this.editandoId
+      ? this.oferta.actualizarInstitucion(this.editandoId, this.form)
+      : this.oferta.crearInstitucion(this.form);
+    peticion.subscribe({
+      next: () => {
+        this.nuevo();
+        this.cargar();
+      },
       error: (e) => (this.error = mensajeError(e)),
     });
   }
 
-  limpiar(): void {
-    this.filtros = { texto: '', nivel: '', modalidad: '', area: '', municipio: '' };
-    this.buscar();
+  eliminar(i: Institucion): void {
+    if (!i.id || !confirm(`¿Eliminar ${i.nombre}?`)) return;
+    this.oferta.eliminarInstitucion(i.id).subscribe({
+      next: () => this.cargar(),
+      error: (e) => (this.error = mensajeError(e)),
+    });
   }
 
-  convocatoriasDe(programaId: number): Oportunidad[] {
-    return this.oportunidades.filter((o) => o.programaId === programaId);
+  private vacio(): Institucion {
+    return { nombre: '', nit: '', tipo: 'PUBLICA', departamento: 'Quindío', municipio: '', correoContacto: '' };
   }
 }
