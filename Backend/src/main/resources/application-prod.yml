@@ -1,0 +1,30 @@
+# Perfil "prod": se activa en Azure App Service con la variable SPRING_PROFILES_ACTIVE=prod.
+# Solo sobrescribe lo que cambia respecto a application.yml.
+# Los valores reales NO van aquí (ni en Git): se configuran en Azure, en
+# App Service > Configuración > Variables de entorno.
+server:
+  port: ${PORT:80}                       # App Service indica el puerto; por defecto 80
+  forward-headers-strategy: framework    # Azure entrega HTTPS por delante (Swagger con https)
+
+spring:
+  datasource:
+    # Ejemplo: jdbc:mysql://sicares-mysql.mysql.database.azure.com:3306/sicares_db?sslMode=REQUIRED&serverTimezone=America/Bogota
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 5
+  jpa:
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+
+sicares:
+  jwt:
+    secret: ${JWT_SECRET}
+  cors:
+    origenes-permitidos: ${CORS_ORIGINS}
+  admin-inicial:
+    correo: ${ADMIN_CORREO:admin@sicares.co}
+    contrasena: ${ADMIN_CONTRASENA}
