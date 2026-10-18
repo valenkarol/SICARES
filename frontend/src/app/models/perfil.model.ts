@@ -11,6 +11,20 @@ export interface InformacionPersonal {
   municipio: string;
   zona: string;
   edad?: number;
+  /** Obligatorio cuando el beneficiario es menor de 18 años. */
+  responsable?: ResponsableMenor | null;
+}
+
+/** Adulto responsable de un beneficiario menor de edad (HU-04). */
+export interface ResponsableMenor {
+  nombres: string;
+  apellidos: string;
+  tipoDocumento: string; // siempre CC (debe ser mayor de edad)
+  numeroDocumento: string;
+  fechaNacimiento: string; // yyyy-MM-dd
+  parentesco: string;
+  telefono: string;
+  correo?: string;
 }
 
 export interface SituacionVictima {

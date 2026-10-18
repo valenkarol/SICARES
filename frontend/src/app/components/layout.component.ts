@@ -38,14 +38,20 @@ import { AuthService } from '../services/auth.service';
     </main>
   `,
   styles: [`
-    .barra { background: #fff; border-bottom: 1px solid var(--borde); position: sticky; top: 0; z-index: 10; }
-    .barra-in { max-width: 1120px; margin: 0 auto; padding: 10px 16px; display: flex; gap: 16px;
+    /* Colores del documento UI: barra azul marino, marca y menú en rosa/lila */
+    .barra { background: var(--marino); position: sticky; top: 0; z-index: 10;
+      box-shadow: 0 2px 8px rgba(1, 32, 96, 0.25); }
+    .barra-in { max-width: 1120px; margin: 0 auto; padding: 12px 16px; display: flex; gap: 16px;
       align-items: center; flex-wrap: wrap; }
-    .marca { font-weight: 700; font-size: 1.15rem; color: var(--primario); text-decoration: none; }
+    .marca { font-weight: 700; font-size: 1.35rem; color: var(--rosa); text-decoration: none; letter-spacing: 0.5px; }
     nav { display: flex; gap: 4px; flex-wrap: wrap; flex: 1; }
-    nav a { padding: 6px 10px; border-radius: 6px; text-decoration: none; color: var(--texto-suave); font-weight: 500; }
-    nav a.activo, nav a:hover { background: var(--primario-claro); color: var(--primario-oscuro); }
+    nav a { padding: 6px 12px; border-radius: 8px; text-decoration: none; color: var(--rosa); font-weight: 500; }
+    nav a:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
+    nav a.activo { background: var(--acero); color: #fff; }
     .usuario { display: flex; gap: 8px; align-items: center; }
+    .usuario .suave { color: var(--azul-claro); }
+    .usuario .btn-sec { background: transparent; color: #fff; border-color: var(--rosa); }
+    .usuario .btn-sec:hover { background: var(--rosa); color: var(--marino); }
   `],
 })
 export class LayoutComponent {
