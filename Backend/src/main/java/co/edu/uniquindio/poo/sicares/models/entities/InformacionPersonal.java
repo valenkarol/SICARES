@@ -59,6 +59,10 @@ public class InformacionPersonal {
     @Column(nullable = false, length = 10)
     private Zona zona;
 
+    /** Adulto responsable; obligatorio solo si el beneficiario es menor de edad. */
+    @Embedded
+    private ResponsableMenor responsable;
+
     public int calcularEdad() {
         return Period.between(fechaNacimiento, LocalDate.now()).getYears();
     }
@@ -68,5 +72,9 @@ public class InformacionPersonal {
         if (fechaNacimiento == null) return false;
         int edad = calcularEdad();
         return edad >= EDAD_MINIMA && edad <= EDAD_MAXIMA;
+    }
+
+    public boolean esMenorDeEdad() {
+        return fechaNacimiento != null && calcularEdad() < ResponsableMenor.MAYORIA_EDAD;
     }
 }
