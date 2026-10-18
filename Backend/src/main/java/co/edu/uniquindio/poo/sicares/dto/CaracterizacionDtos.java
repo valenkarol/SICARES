@@ -30,7 +30,23 @@ public final class CaracterizacionDtos {
             @NotBlank(message = "El departamento es obligatorio") String departamento,
             @NotBlank(message = "El municipio es obligatorio") String municipio,
             @NotNull(message = "La zona es obligatoria") Zona zona,
-            Integer edad
+            Integer edad,
+            @Valid ResponsableMenorDto responsable
+    ) {
+    }
+
+    /** Adulto responsable, obligatorio cuando el beneficiario es menor de 18 años. */
+    public record ResponsableMenorDto(
+            @NotBlank(message = "Los nombres del responsable son obligatorios") @Size(max = 80) String nombres,
+            @NotBlank(message = "Los apellidos del responsable son obligatorios") @Size(max = 80) String apellidos,
+            @NotNull(message = "El tipo de documento del responsable es obligatorio") TipoDocumento tipoDocumento,
+            @NotBlank @Pattern(regexp = "\\d{6,12}", message = "El documento del responsable debe tener entre 6 y 12 dígitos")
+            String numeroDocumento,
+            @NotNull(message = "La fecha de nacimiento del responsable es obligatoria") @Past LocalDate fechaNacimiento,
+            @NotBlank(message = "El parentesco es obligatorio") @Size(max = 40) String parentesco,
+            @NotBlank(message = "El teléfono del responsable es obligatorio")
+            @Pattern(regexp = "\\d{7,10}", message = "Teléfono del responsable inválido") String telefono,
+            @Email(message = "Correo del responsable inválido") @Size(max = 120) String correo
     ) {
     }
 
@@ -114,4 +130,3 @@ public final class CaracterizacionDtos {
     ) {
     }
 }
-

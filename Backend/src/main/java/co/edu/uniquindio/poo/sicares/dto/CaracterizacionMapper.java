@@ -19,7 +19,13 @@ public final class CaracterizacionMapper {
         if (i == null) return null;
         return new CaracterizacionDtos.InformacionPersonalDto(i.getNombres(), i.getApellidos(), i.getTipoDocumento(),
                 i.getNumeroDocumento(), i.getFechaNacimiento(), i.getGenero(), i.getEtnia(), i.getTelefono(),
-                i.getDepartamento(), i.getMunicipio(), i.getZona(), i.calcularEdad());
+                i.getDepartamento(), i.getMunicipio(), i.getZona(), i.calcularEdad(), toDto(i.getResponsable()));
+    }
+
+    public static CaracterizacionDtos.ResponsableMenorDto toDto(ResponsableMenor r) {
+        if (r == null) return null;
+        return new CaracterizacionDtos.ResponsableMenorDto(r.getNombres(), r.getApellidos(), r.getTipoDocumento(),
+                r.getNumeroDocumento(), r.getFechaNacimiento(), r.getParentesco(), r.getTelefono(), r.getCorreo());
     }
 
     public static CaracterizacionDtos.SituacionVictimaDto toDto(SituacionVictima v) {
