@@ -8,6 +8,7 @@ import co.edu.uniquindio.poo.sicares.models.entities.OportunidadEducativa;
 import co.edu.uniquindio.poo.sicares.models.entities.ProgramaEducativo;
 import co.edu.uniquindio.poo.sicares.repository.OportunidadEducativaRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -58,7 +59,13 @@ public class OportunidadService {
 
     @Transactional
     public void eliminar(Long id) {
-        oportunidadRepository.delete(buscar(id));
+        try {
+            oportunidadRepository.delete(buscar(id));
+            oportunidadRepository.flush(); // fuerza el borrado aquí para poder capturar el error
+        } catch (DataIntegrityViolationException e) {
+            throw new ReglaNegocioException("No se puede eliminar la convocatoria porque ya aparece en rutas "
+                    + "educativas o postulaciones de usuarios. Edítala y pon 0 cupos para cerrarla.");
+        }
     }
 
     public OportunidadEducativa buscar(Long id) {

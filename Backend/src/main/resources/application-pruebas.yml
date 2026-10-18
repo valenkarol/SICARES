@@ -1,0 +1,16 @@
+# Perfil "pruebas": usa una base de datos SEPARADA para correr la colección de Postman
+# sin ensuciar la base de datos de desarrollo (sicares_db).
+#
+# Cómo usarlo:
+#   Terminal:  gradlew.bat bootRun --args="--spring.profiles.active=pruebas"
+#   IntelliJ:  Run > Edit Configurations > SicaresApplication > Active profiles: pruebas
+#
+# Con create-drop la base de datos se crea vacía al arrancar (DataInitializer carga el administrador
+# y la oferta de ejemplo) y se borra al detener el backend: cada corrida de Postman empieza limpia.
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/sicares_pruebas_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=America/Bogota&allowPublicKeyRetrieval=true
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false

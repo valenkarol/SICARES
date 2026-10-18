@@ -3,12 +3,14 @@ package co.edu.uniquindio.poo.sicares.services;
 import co.edu.uniquindio.poo.sicares.dto.OfertaDtos.*;
 import co.edu.uniquindio.poo.sicares.dto.OfertaMapper;
 import co.edu.uniquindio.poo.sicares.exceptions.RecursoNoEncontradoException;
+import co.edu.uniquindio.poo.sicares.exceptions.ReglaNegocioException;
 import co.edu.uniquindio.poo.sicares.models.entities.Institucion;
 import co.edu.uniquindio.poo.sicares.models.entities.ProgramaEducativo;
 import co.edu.uniquindio.poo.sicares.models.enums.Modalidad;
 import co.edu.uniquindio.poo.sicares.models.enums.NivelEducativo;
 import co.edu.uniquindio.poo.sicares.repository.ProgramaEducativoRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -57,13 +59,24 @@ public class ProgramaService {
         return OfertaMapper.toDto(p);
     }
 
-    /** Se recomienda desactivar en lugar de eliminar si ya hay postulaciones. */
+    /**
+     * Elimina el programa y sus convocatorias. Si alguna convocatoria ya está en la ruta educativa o en una
+     * postulación de un usuario, la base de datos no permite borrarla: se informa con un mensaje claro y se
+     * recomienda desactivar el programa (así deja de ofrecerse sin perder el historial).
+     */
     @Transactional
     public void eliminar(Long id) {
         ProgramaEducativo p = buscarEntidad(id);
         p.getBeneficios().forEach(b -> b.getProgramas().remove(p));
         p.getInstitucion().getProgramas().remove(p);
-        programaRepository.delete(p);
+        try {
+            programaRepository.delete(p);
+            programaRepository.flush(); // fuerza el borrado aquí para poder capturar el error
+        } catch (DataIntegrityViolationException e) {
+            throw new ReglaNegocioException("No se puede eliminar el programa porque sus convocatorias ya aparecen en "
+                    + "rutas educativas o postulaciones de usuarios. Desactívalo (Editar → desmarcar «Activo») "
+                    + "para que deje de ofrecerse.");
+        }
     }
 
     public ProgramaEducativo buscarEntidad(Long id) {

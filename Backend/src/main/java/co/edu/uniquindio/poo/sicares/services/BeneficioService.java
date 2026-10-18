@@ -8,7 +8,9 @@ import co.edu.uniquindio.poo.sicares.models.entities.Beneficio;
 import co.edu.uniquindio.poo.sicares.models.entities.ProgramaEducativo;
 import co.edu.uniquindio.poo.sicares.repository.BeneficioRepository;
 import co.edu.uniquindio.poo.sicares.repository.ProgramaEducativoRepository;
+import co.edu.uniquindio.poo.sicares.exceptions.ReglaNegocioException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,7 +50,12 @@ public class BeneficioService {
 
     @Transactional
     public void eliminar(Long id) {
-        beneficioRepository.delete(buscar(id));
+        try {
+            beneficioRepository.delete(buscar(id));
+            beneficioRepository.flush();
+        } catch (DataIntegrityViolationException e) {
+            throw new ReglaNegocioException("No se puede eliminar el beneficio porque está en uso.");
+        }
     }
 
     private Beneficio buscar(Long id) {

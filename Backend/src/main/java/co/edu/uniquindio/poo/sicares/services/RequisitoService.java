@@ -8,7 +8,12 @@ import co.edu.uniquindio.poo.sicares.models.entities.Requisito;
 import co.edu.uniquindio.poo.sicares.models.enums.NivelEducativo;
 import co.edu.uniquindio.poo.sicares.models.enums.TipoRequisito;
 import co.edu.uniquindio.poo.sicares.repository.RequisitoRepository;
+import co.edu.uniquindio.poo.sicares.models.entities.Beneficio;
+import co.edu.uniquindio.poo.sicares.models.entities.ProgramaEducativo;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +28,10 @@ import java.util.Set;
 public class RequisitoService {
 
     private final RequisitoRepository requisitoRepository;
+
+    /** Se inyecta por campo para no cambiar el constructor (lo usan otras clases y las pruebas). */
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Transactional(readOnly = true)
     public List<RequisitoDto> listar() {
@@ -47,7 +56,23 @@ public class RequisitoService {
 
     @Transactional
     public void eliminar(Long id) {
-        requisitoRepository.delete(buscar(id));
+        Requisito r = buscar(id);
+        // Las tablas programa_requisito y beneficio_requisito las maneja el otro lado de la relación:
+        // primero se quita el requisito de los programas y beneficios que lo exigen.
+        entityManager.createQuery("SELECT p FROM ProgramaEducativo p JOIN p.requisitos r WHERE r.id = :id",
+                        ProgramaEducativo.class)
+                .setParameter("id", id).getResultList()
+                .forEach(p -> p.getRequisitos().remove(r));
+        entityManager.createQuery("SELECT b FROM Beneficio b JOIN b.requisitos r WHERE r.id = :id", Beneficio.class)
+                .setParameter("id", id).getResultList()
+                .forEach(b -> b.getRequisitos().remove(r));
+        try {
+            requisitoRepository.delete(r);
+            requisitoRepository.flush();
+        } catch (DataIntegrityViolationException e) {
+            throw new ReglaNegocioException("No se puede eliminar el requisito porque ya tiene documentos "
+                    + "cargados en postulaciones de usuarios.");
+        }
     }
 
     public Requisito buscar(Long id) {
@@ -102,3 +127,4 @@ public class RequisitoService {
         }
     }
 }
+
