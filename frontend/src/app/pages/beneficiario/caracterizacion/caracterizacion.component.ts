@@ -7,6 +7,7 @@ import {
   CondicionAccesibilidad,
   InformacionPersonal,
   Perfil,
+  ResponsableMenor,
   SituacionSocioeconomica,
   SituacionVictima,
   TrayectoriaEducativa,
@@ -55,7 +56,7 @@ type Seccion = 'personal' | 'victima' | 'socio' | 'trayectoria' | 'intereses' | 
       @switch (seccion) {
         <!-- ================= HU-04 Información personal ================= -->
         @case ('personal') {
-          <form #f="ngForm" (ngSubmit)="guardar(perfilService.guardarInformacionPersonal(personal))">
+          <form #f="ngForm" (ngSubmit)="guardarPersonal()">
             <div class="grid-2">
               <div class="campo"><label>Nombres *</label>
                 <input name="nombres" [(ngModel)]="personal.nombres" required /></div>
@@ -92,7 +93,47 @@ type Seccion = 'personal' | 'victima' | 'socio' | 'trayectoria' | 'intereses' | 
                   <option value="URBANA">Urbana</option><option value="RURAL">Rural</option>
                 </select></div>
             </div>
-            <button class="btn" [disabled]="f.invalid || guardando">Guardar</button>
+
+            <!-- Responsable obligatorio: se despliega solo si la fecha de nacimiento indica menor de 18 años -->
+            @if (esMenorDeEdad) {
+              <fieldset class="responsable">
+                <legend>Responsable mayor de edad *</legend>
+                <p class="suave">
+                  Según la fecha de nacimiento tienes {{ edadBeneficiario }} años. Como eres menor de edad, debes
+                  registrar los datos de un adulto responsable (padre, madre, acudiente o tutor legal).
+                </p>
+                <div class="grid-2">
+                  <div class="campo"><label>Nombres del responsable *</label>
+                    <input name="respNombres" [(ngModel)]="responsable.nombres" required maxlength="80" /></div>
+                  <div class="campo"><label>Apellidos del responsable *</label>
+                    <input name="respApellidos" [(ngModel)]="responsable.apellidos" required maxlength="80" /></div>
+                  <div class="campo"><label>Parentesco *</label>
+                    <select name="respParentesco" [(ngModel)]="responsable.parentesco" required>
+                      <option value="" disabled>Selecciona una opción</option>
+                      @for (par of parentescos; track par) { <option>{{ par }}</option> }
+                    </select></div>
+                  <div class="campo"><label>Tipo de documento *</label>
+                    <input name="respTipoDocumento" value="Cédula de ciudadanía" readonly /></div>
+                  <div class="campo"><label>Número de documento *</label>
+                    <input name="respNumeroDocumento" [(ngModel)]="responsable.numeroDocumento" required pattern="\\d{6,12}" /></div>
+                  <div class="campo"><label>Fecha de nacimiento * (mayor de 18 años)</label>
+                    <input type="date" name="respFechaNacimiento" [(ngModel)]="responsable.fechaNacimiento" required
+                           [max]="fechaMaximaResponsable" /></div>
+                  <div class="campo"><label>Teléfono *</label>
+                    <input name="respTelefono" [(ngModel)]="responsable.telefono" required pattern="\\d{7,10}" /></div>
+                  <div class="campo"><label>Correo electrónico</label>
+                    <input type="email" name="respCorreo" [(ngModel)]="responsable.correo" email maxlength="120" /></div>
+                </div>
+                @if (responsable.fechaNacimiento && !responsableEsMayor) {
+                  <div class="alerta alerta-error">El responsable debe ser mayor de edad (18 años o más).</div>
+                }
+                @if (responsable.numeroDocumento && responsable.numeroDocumento === personal.numeroDocumento) {
+                  <div class="alerta alerta-error">El documento del responsable no puede ser el mismo del beneficiario.</div>
+                }
+              </fieldset>
+            }
+
+            <button class="btn" [disabled]="f.invalid || guardando || !responsableValido">Guardar</button>
           </form>
         }
 
@@ -231,7 +272,14 @@ type Seccion = 'personal' | 'victima' | 'socio' | 'trayectoria' | 'intereses' | 
     </div>
   `,
   styles: [`
-    .estudio { border: 1px dashed var(--borde); border-radius: 8px; padding: 12px; margin-bottom: 10px; }
+    .estudio { border: 1px dashed var(--azul-claro); border-radius: 10px; padding: 12px; margin-bottom: 10px;
+      background: var(--azul-palido); }
+    .responsable { border: 2px solid var(--rosa); border-radius: 14px; background: var(--rosa-claro);
+      padding: 14px 16px 6px; margin: 4px 0 16px; }
+    .responsable legend { padding: 2px 12px; border-radius: 999px; background: var(--morado); color: #fff;
+      font-weight: 600; font-size: 0.9rem; }
+    .responsable p.suave { margin: 4px 0 12px; }
+    .responsable input[readonly] { background: var(--azul-palido); color: var(--texto-suave); }
   `],
 })
 export class CaracterizacionComponent implements OnInit {
@@ -265,6 +313,10 @@ export class CaracterizacionComponent implements OnInit {
     nivelActual: 'NINGUNO', ultimoGradoAprobado: 0, anioUltimoEstudio: new Date().getFullYear(), estudios: [],
   };
   interesesSeleccionados = new Set<string>();
+
+  /** Adulto responsable: solo se envía si el beneficiario es menor de 18 años. */
+  responsable: ResponsableMenor = this.responsableVacio();
+  parentescos = ['Madre', 'Padre', 'Abuelo(a)', 'Tío(a)', 'Hermano(a)', 'Acudiente', 'Tutor legal', 'Otro'];
   accesibilidad: CondicionAccesibilidad = {
     tieneInternet: false, tieneDispositivos: false, medioTransporte: 'PUBLICO', distanciaMaximaKm: 5,
   };
@@ -322,6 +374,61 @@ export class CaracterizacionComponent implements OnInit {
     });
   }
 
+  // ---------------------------------------------------------------- Responsable de menores (HU-04)
+
+  /** Edad calculada a partir de una fecha yyyy-MM-dd (null si la fecha no es válida). */
+  private calcularEdad(fecha: string | undefined | null): number | null {
+    if (!fecha) return null;
+    const [a, m, d] = fecha.split('-').map(Number);
+    if (!a || !m || !d) return null;
+    const hoy = new Date();
+    let edad = hoy.getFullYear() - a;
+    if (hoy.getMonth() + 1 < m || (hoy.getMonth() + 1 === m && hoy.getDate() < d)) edad--;
+    return edad;
+  }
+
+  get edadBeneficiario(): number | null {
+    return this.calcularEdad(this.personal.fechaNacimiento);
+  }
+
+  get esMenorDeEdad(): boolean {
+    const edad = this.edadBeneficiario;
+    return edad !== null && edad >= 0 && edad < 18;
+  }
+
+  get responsableEsMayor(): boolean {
+    const edad = this.calcularEdad(this.responsable.fechaNacimiento);
+    return edad !== null && edad >= 18;
+  }
+
+  /** Si el beneficiario es menor, el responsable debe ser adulto y tener un documento distinto. */
+  get responsableValido(): boolean {
+    if (!this.esMenorDeEdad) return true;
+    return this.responsableEsMayor && this.responsable.numeroDocumento !== this.personal.numeroDocumento;
+  }
+
+  /** Fecha máxima permitida para el responsable: hoy menos 18 años. */
+  get fechaMaximaResponsable(): string {
+    const f = new Date();
+    f.setFullYear(f.getFullYear() - 18);
+    return `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
+  }
+
+  guardarPersonal(): void {
+    const datos: InformacionPersonal = {
+      ...this.personal,
+      responsable: this.esMenorDeEdad ? { ...this.responsable, tipoDocumento: 'CC' } : null,
+    };
+    this.guardar(this.perfilService.guardarInformacionPersonal(datos));
+  }
+
+  private responsableVacio(): ResponsableMenor {
+    return {
+      nombres: '', apellidos: '', tipoDocumento: 'CC', numeroDocumento: '', fechaNacimiento: '',
+      parentesco: '', telefono: '', correo: '',
+    };
+  }
+
   guardarTrayectoria(): void {
     this.guardar(this.perfilService.guardarTrayectoria(this.trayectoria));
   }
@@ -355,7 +462,12 @@ export class CaracterizacionComponent implements OnInit {
   /** Copia los datos guardados a los formularios (HU-11: editar lo existente). */
   private cargarPerfil(p: Perfil): void {
     this.perfil = p;
-    if (p.informacionPersonal) this.personal = { ...p.informacionPersonal };
+    if (p.informacionPersonal) {
+      this.personal = { ...p.informacionPersonal };
+      this.responsable = p.informacionPersonal.responsable
+        ? { ...p.informacionPersonal.responsable, correo: p.informacionPersonal.responsable.correo ?? '' }
+        : this.responsableVacio();
+    }
     if (p.situacionVictima) this.victima = { ...p.situacionVictima };
     if (p.situacionSocioeconomica) this.socio = { ...p.situacionSocioeconomica };
     if (p.trayectoriaEducativa) {

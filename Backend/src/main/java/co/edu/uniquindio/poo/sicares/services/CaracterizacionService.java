@@ -86,6 +86,7 @@ public class CaracterizacionService {
         info.setDepartamento(dto.departamento().trim());
         info.setMunicipio(dto.municipio().trim());
         info.setZona(dto.zona());
+        info.setResponsable(info.esMenorDeEdad() ? crearResponsable(dto.responsable()) : null);
         perfil.setInformacionPersonal(info);
 
         return finalizarCambio(b);
@@ -235,6 +236,41 @@ public class CaracterizacionService {
         if (edad >= 18 && dto.tipoDocumento() == TipoDocumento.TI) {
             throw new ReglaNegocioException("Los mayores de edad deben registrarse con Cédula de Ciudadanía (CC)");
         }
+        if (edad < ResponsableMenor.MAYORIA_EDAD) {
+            validarResponsable(dto);
+        }
+    }
+
+    /** HU-04: un menor de edad debe registrar un adulto responsable (mayor de 18, con CC). */
+    private void validarResponsable(CaracterizacionDtos.InformacionPersonalDto dto) {
+        CaracterizacionDtos.ResponsableMenorDto r = dto.responsable();
+        if (r == null) {
+            throw new ReglaNegocioException("Como eres menor de edad debes registrar los datos de un adulto responsable");
+        }
+        ResponsableMenor tmp = new ResponsableMenor();
+        tmp.setFechaNacimiento(r.fechaNacimiento());
+        if (!tmp.esMayorDeEdad()) {
+            throw new ReglaNegocioException("El responsable debe ser mayor de edad (18 años o más)");
+        }
+        if (r.tipoDocumento() != TipoDocumento.CC) {
+            throw new ReglaNegocioException("El responsable debe identificarse con Cédula de Ciudadanía (CC)");
+        }
+        if (r.numeroDocumento().equals(dto.numeroDocumento())) {
+            throw new ReglaNegocioException("El documento del responsable no puede ser el mismo del beneficiario");
+        }
+    }
+
+    private ResponsableMenor crearResponsable(CaracterizacionDtos.ResponsableMenorDto r) {
+        ResponsableMenor resp = new ResponsableMenor();
+        resp.setNombres(r.nombres().trim());
+        resp.setApellidos(r.apellidos().trim());
+        resp.setTipoDocumento(r.tipoDocumento());
+        resp.setNumeroDocumento(r.numeroDocumento());
+        resp.setFechaNacimiento(r.fechaNacimiento());
+        resp.setParentesco(r.parentesco());
+        resp.setTelefono(r.telefono());
+        resp.setCorreo(r.correo() == null || r.correo().isBlank() ? null : r.correo().trim());
+        return resp;
     }
 
     private Beneficiario buscarBeneficiario(Long id) {

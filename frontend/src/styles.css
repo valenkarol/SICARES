@@ -1,21 +1,44 @@
-/* You can add global styles to this file, and also import other style files */
-/* ===== Estilos globales de SICARES ===== */
+/* ===== Estilos globales de SICARES =====
+   Paleta tomada del documento C.SICARES_UI_v1.0 (Interfaces de Usuario):
+   - Azul marino  #012060  barras, botones principales, títulos
+   - Rosa / lila  #E799FF  marca "SICARES", botones de acento, menú
+   - Morado       #81007F  iconos de tarjetas, chips, pestaña activa
+   - Azul acero   #1F4E78  botones "Ver detalles", subtítulos
+   - Verde suave  #C5E0B5  estados aprobados / éxito
+   - Azul claro   #B4C7E7  estados en proceso
+*/
 :root {
-  --primario: #1f6f78;
-  --primario-oscuro: #155158;
-  --primario-claro: #e3f1f2;
-  --acento: #e0a43a;
-  --fondo: #f5f6f4;
+  /* Colores base del documento UI */
+  --marino: #012060;
+  --marino-oscuro: #00143d;
+  --rosa: #e799ff;
+  --rosa-claro: #fbeeff;
+  --rosa-medio: #f3c9ff;
+  --morado: #81007f;
+  --morado-oscuro: #75236d;
+  --acero: #1f4e78;
+  --azul-claro: #b4c7e7;
+  --azul-palido: #edf2fb;
+  --verde: #c5e0b5;
+
+  /* Variables que usan los componentes (se conservan los mismos nombres) */
+  --primario: var(--marino);
+  --primario-oscuro: var(--marino-oscuro);
+  --primario-claro: var(--azul-palido);
+  --acento: var(--rosa);
+  --fondo: #f6f7fc;
   --superficie: #ffffff;
-  --texto: #1d2528;
-  --texto-suave: #5b676b;
-  --borde: #dde2e0;
-  --exito: #2e7d4f;
-  --exito-claro: #e5f4ea;
+  --texto: #10183a;
+  --texto-suave: #4a5578;
+  --borde: #d6dcef;
+  --exito: #2f6b1f;
+  --exito-claro: #e6f2de;
   --error: #b3261e;
-  --error-claro: #fbe9e7;
-  --aviso-claro: #fdf3dc;
-  --radio: 10px;
+  --error-claro: #fdecea;
+  --aviso: #75236d;
+  --aviso-claro: var(--rosa-claro);
+  --radio: 16px;
+  --sombra: 0 2px 10px rgba(1, 32, 96, 0.07);
 }
 
 * { box-sizing: border-box; }
@@ -29,11 +52,11 @@ body {
   line-height: 1.5;
 }
 
-h1, h2, h3 { margin: 0 0 12px; line-height: 1.25; }
-h1 { font-size: 1.6rem; }
-h2 { font-size: 1.25rem; }
-h3 { font-size: 1.05rem; }
-a { color: var(--primario); }
+h1, h2, h3 { margin: 0 0 12px; line-height: 1.25; color: var(--marino); }
+h1 { font-size: 1.6rem; font-weight: 700; }
+h2 { font-size: 1.25rem; font-weight: 600; color: var(--acero); }
+h3 { font-size: 1.05rem; font-weight: 600; color: var(--acero); }
+a { color: var(--acero); }
 .suave { color: var(--texto-suave); font-size: 0.9rem; }
 
 .contenedor { max-width: 1120px; margin: 0 auto; padding: 24px 16px 48px; }
@@ -44,7 +67,11 @@ a { color: var(--primario); }
   border-radius: var(--radio);
   padding: 20px;
   margin-bottom: 16px;
+  box-shadow: var(--sombra);
 }
+/* Variantes de tarjeta del documento UI (rosa y azul pálido) */
+.card-rosa { background: var(--rosa-claro); border-color: var(--rosa-medio); }
+.card-azul { background: var(--azul-palido); border-color: var(--azul-claro); }
 
 .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
 .grid-2 { display: grid; gap: 12px 16px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
@@ -53,61 +80,71 @@ a { color: var(--primario); }
 
 /* ---------- Formularios ---------- */
 .campo { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
-.campo label { font-size: 0.85rem; font-weight: 600; color: var(--texto-suave); }
+.campo label { font-size: 0.85rem; font-weight: 600; color: var(--marino); }
 .campo input, .campo select, .campo textarea {
-  font: inherit; padding: 9px 11px; border: 1px solid var(--borde);
+  font: inherit; padding: 9px 11px; border: 1px solid var(--marino);
   border-radius: 8px; background: #fff; color: var(--texto);
 }
+.campo input::placeholder { color: var(--azul-claro); }
 .campo input:focus, .campo select:focus, .campo textarea:focus {
-  outline: 2px solid var(--primario-claro); border-color: var(--primario);
+  outline: 3px solid var(--rosa-medio); border-color: var(--morado);
 }
+.campo input.ng-touched.ng-invalid, .campo select.ng-touched.ng-invalid { border-color: var(--error); }
 .check { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+.check input { accent-color: var(--marino); }
 
 /* ---------- Botones ---------- */
 .btn {
-  font: inherit; font-weight: 600; cursor: pointer; border: 1px solid var(--primario);
-  background: var(--primario); color: #fff; padding: 9px 16px; border-radius: 8px;
-  text-decoration: none; display: inline-block;
+  font: inherit; font-weight: 600; cursor: pointer; border: 1px solid var(--marino);
+  background: var(--marino); color: #fff; padding: 9px 18px; border-radius: 8px;
+  text-decoration: none; display: inline-block; transition: background 0.15s, color 0.15s;
 }
-.btn:hover { background: var(--primario-oscuro); }
-.btn:disabled { opacity: 0.55; cursor: not-allowed; }
-.btn-sec { background: #fff; color: var(--primario); }
-.btn-sec:hover { background: var(--primario-claro); }
+.btn:hover { background: var(--acero); border-color: var(--acero); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-sec { background: #fff; color: var(--marino); border-color: var(--rosa); }
+.btn-sec:hover { background: var(--rosa-claro); border-color: var(--rosa); color: var(--marino); }
+.btn-acento { background: var(--rosa); color: var(--marino); border-color: var(--rosa); }
+.btn-acento:hover { background: #dd7ff9; border-color: #dd7ff9; color: var(--marino); }
 .btn-peligro { background: #fff; color: var(--error); border-color: var(--error); }
-.btn-peligro:hover { background: var(--error-claro); }
+.btn-peligro:hover { background: var(--error-claro); border-color: var(--error); }
 .btn-chico { padding: 5px 10px; font-size: 0.85rem; }
 
 /* ---------- Tablas ---------- */
 .tabla { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
 .tabla th, .tabla td { text-align: left; padding: 9px 8px; border-bottom: 1px solid var(--borde); vertical-align: top; }
-.tabla th { color: var(--texto-suave); font-weight: 600; font-size: 0.82rem; text-transform: uppercase; }
+.tabla th {
+  color: var(--marino); font-weight: 600; font-size: 0.8rem; text-transform: uppercase;
+  background: var(--azul-palido);
+}
+.tabla tbody tr:hover { background: var(--rosa-claro); }
 .tabla-scroll { overflow-x: auto; }
 
 /* ---------- Etiquetas y alertas ---------- */
 .badge {
-  display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 0.78rem;
-  font-weight: 600; background: var(--primario-claro); color: var(--primario-oscuro);
+  display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 0.78rem;
+  font-weight: 600; background: var(--rosa-claro); color: var(--morado);
 }
-.badge-ok { background: var(--exito-claro); color: var(--exito); }
+.badge-ok { background: var(--verde); color: var(--exito); }
 .badge-error { background: var(--error-claro); color: var(--error); }
-.badge-aviso { background: var(--aviso-claro); color: #8a5a00; }
+.badge-aviso { background: var(--azul-claro); color: var(--marino); }
 
-.alerta { padding: 10px 14px; border-radius: 8px; margin-bottom: 12px; }
-.alerta-error { background: var(--error-claro); color: var(--error); }
-.alerta-ok { background: var(--exito-claro); color: var(--exito); }
-.alerta-aviso { background: var(--aviso-claro); color: #8a5a00; }
+.alerta { padding: 10px 14px; border-radius: 10px; margin-bottom: 12px; border: 1px solid transparent; }
+.alerta-error { background: var(--error-claro); color: var(--error); border-color: #f5c2bd; }
+.alerta-ok { background: var(--exito-claro); color: var(--exito); border-color: var(--verde); }
+.alerta-aviso { background: var(--rosa-claro); color: var(--morado-oscuro); border-color: var(--rosa-medio); }
 
 /* ---------- Pestañas ---------- */
 .tabs { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--borde); margin-bottom: 16px; }
 .tab {
   font: inherit; background: none; border: none; padding: 10px 14px; cursor: pointer;
-  color: var(--texto-suave); border-bottom: 3px solid transparent; font-weight: 600;
+  color: var(--acero); border-bottom: 3px solid transparent; font-weight: 600;
 }
-.tab.activa { color: var(--primario); border-bottom-color: var(--primario); }
+.tab:hover { color: var(--morado); }
+.tab.activa { color: var(--morado); border-bottom-color: var(--morado); }
 
 /* ---------- Barra de progreso ---------- */
-.progreso { height: 10px; background: var(--borde); border-radius: 999px; overflow: hidden; }
-.progreso > div { height: 100%; background: var(--primario); transition: width 0.3s; }
+.progreso { height: 10px; background: var(--azul-palido); border: 1px solid var(--borde); border-radius: 999px; overflow: hidden; }
+.progreso > div { height: 100%; background: linear-gradient(90deg, var(--marino), var(--rosa)); transition: width 0.3s; }
 
-.kpi { font-size: 2rem; font-weight: 700; color: var(--primario); }
+.kpi { font-size: 2rem; font-weight: 700; color: var(--marino); }
 .vacio { text-align: center; padding: 32px; color: var(--texto-suave); }

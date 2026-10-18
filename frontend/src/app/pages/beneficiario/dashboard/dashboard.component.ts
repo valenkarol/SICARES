@@ -19,7 +19,7 @@ import { EtiquetaPipe } from '../../../utils/etiqueta.pipe';
     <p class="suave">Este es el resumen de tu proceso en SICARES.</p>
 
     <div class="grid">
-      <div class="card">
+      <div class="card card-azul">
         <h3>Mi caracterización</h3>
         <div class="progreso"><div [style.width.%]="perfil?.porcentajeCompletitud ?? 0"></div></div>
         <p>{{ perfil?.porcentajeCompletitud ?? 0 }}% completado</p>
@@ -30,7 +30,7 @@ import { EtiquetaPipe } from '../../../utils/etiqueta.pipe';
         }
       </div>
 
-      <div class="card">
+      <div class="card card-rosa">
         <h3>Mi ruta educativa</h3>
         @if (ruta) {
           <p>
@@ -41,7 +41,7 @@ import { EtiquetaPipe } from '../../../utils/etiqueta.pipe';
         } @else {
           <p class="suave">Aún no has generado una ruta.</p>
         }
-        <a class="btn btn-sec" routerLink="/beneficiario/rutas">Ver mi ruta</a>
+        <a class="btn btn-acento" routerLink="/beneficiario/rutas">Ver mi ruta</a>
       </div>
 
       <div class="card">
