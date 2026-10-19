@@ -4,5 +4,5 @@
 //(Información general), por ejemplo: https://sicares-api-xxxxxx.brazilsouth-01.azurewebsites.net
 export const environment = {
   production: true,
-  apiUrl: 'https://REEMPLAZAR-CON-DOMINIO-DE-APP-SERVICE.azurewebsites.net/api',
+  apiUrl: '/api',
 };
