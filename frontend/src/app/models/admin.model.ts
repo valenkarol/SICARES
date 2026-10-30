@@ -16,6 +16,8 @@ export interface Estadisticas {
   perfilesCompletos: number;
   porcentajePerfilesCompletos: number;
   beneficiariosConRuta: number;
+  totalPostulaciones: number;
+  postulacionesPorEstado: Record<string, number>;
   totalProgramas: number;
   oportunidadesVigentes: number;
 }

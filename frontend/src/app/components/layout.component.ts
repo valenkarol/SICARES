@@ -1,6 +1,7 @@
-import { Component, inject } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../services/auth.service';
+import { NotificacionService } from '../services/notificacion.service';
 
 /** Barra de navegación + contenido. Muestra menús distintos según el rol (HU-03). */
 @Component({
@@ -17,6 +18,7 @@ import { AuthService } from '../services/auth.service';
             <a routerLink="/beneficiario/caracterizacion" routerLinkActive="activo">Mi perfil</a>
             <a routerLink="/beneficiario/oportunidades" routerLinkActive="activo">Oferta</a>
             <a routerLink="/beneficiario/rutas" routerLinkActive="activo">Mi ruta</a>
+            <a routerLink="/beneficiario/postulaciones" routerLinkActive="activo">Postulaciones</a>
           } @else {
             <a routerLink="/admin" routerLinkActive="activo" [routerLinkActiveOptions]="{ exact: true }">Panel</a>
             <a routerLink="/admin/instituciones" routerLinkActive="activo">Instituciones</a>
@@ -24,10 +26,12 @@ import { AuthService } from '../services/auth.service';
             <a routerLink="/admin/oportunidades" routerLinkActive="activo">Convocatorias</a>
             <a routerLink="/admin/requisitos" routerLinkActive="activo">Requisitos</a>
             <a routerLink="/admin/beneficios" routerLinkActive="activo">Beneficios</a>
+            <a routerLink="/admin/postulaciones" routerLinkActive="activo">Postulaciones</a>
             <a routerLink="/admin/beneficiarios" routerLinkActive="activo">Usuarios</a>
           }
         </nav>
         <div class="usuario">
+          @if (noLeidas > 0) { <span class="badge badge-aviso" title="Notificaciones sin leer">{{ noLeidas }}</span> }
           <span class="suave">{{ auth.usuario?.correo }}</span>
           <button class="btn btn-sec btn-chico" (click)="auth.logout()">Salir</button>
         </div>
@@ -54,6 +58,12 @@ import { AuthService } from '../services/auth.service';
     .usuario .btn-sec:hover { background: var(--rosa); color: var(--marino); }
   `],
 })
-export class LayoutComponent {
+export class LayoutComponent implements OnInit {
   auth = inject(AuthService);
+  private notificaciones = inject(NotificacionService);
+  noLeidas = 0;
+
+  ngOnInit(): void {
+    this.notificaciones.noLeidas().subscribe({ next: (r) => (this.noLeidas = r.total), error: () => {} });
+  }
 }

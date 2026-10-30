@@ -43,6 +43,16 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./pages/beneficiario/rutas-educativas/rutas-educativas.component').then((m) => m.RutasEducativasComponent),
       },
+      {
+        path: 'postulaciones',
+        loadComponent: () =>
+          import('./pages/beneficiario/postulaciones/postulaciones.component').then((m) => m.PostulacionesComponent),
+      },
+      {
+        path: 'postulaciones/:id',
+        loadComponent: () =>
+          import('./pages/beneficiario/seguimiento/seguimiento.component').then((m) => m.SeguimientoComponent),
+      },
     ],
   },
 
@@ -83,6 +93,13 @@ export const routes: Routes = [
         path: 'beneficios',
         loadComponent: () =>
           import('./pages/administrador/beneficios/beneficios.component').then((m) => m.BeneficiosComponent),
+      },
+      {
+        path: 'postulaciones',
+        loadComponent: () =>
+          import('./pages/administrador/postulaciones/admin-postulaciones.component').then(
+            (m) => m.AdminPostulacionesComponent,
+          ),
       },
       {
         path: 'beneficiarios',
