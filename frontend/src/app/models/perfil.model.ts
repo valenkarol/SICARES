@@ -104,4 +104,6 @@ export interface Catalogos {
   tiposInstitucion: string[];
   tiposBeneficio: string[];
   tiposRequisito: string[];
+  estadosPostulacion: string[];
+  estadosDocumento: string[];
 }

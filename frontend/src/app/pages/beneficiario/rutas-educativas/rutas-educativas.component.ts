@@ -1,13 +1,14 @@
 import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AlertaComponent } from '../../../components/alerta.component';
-import { RutaEducativa } from '../../../models/ruta.model';
+import { Recomendacion, RutaEducativa } from '../../../models/ruta.model';
+import { PostulacionService } from '../../../services/postulacion.service';
 import { RutaService } from '../../../services/ruta.service';
 import { EtiquetaPipe } from '../../../utils/etiqueta.pipe';
 import { mensajeError } from '../../../utils/errores';
 
-/** HU-18 Generar ruta recomendada y HU-19 Consultar rutas. (HU-20 Seleccionar oportunidad llega en el Sprint 3) */
+/** HU-18 Generar ruta recomendada, HU-19 Consultar rutas y HU-20 Seleccionar oportunidad. */
 @Component({
   selector: 'app-rutas-educativas',
   standalone: true,
@@ -58,6 +59,9 @@ import { mensajeError } from '../../../utils/errores';
                 }
               </p>
             }
+            @if (ruta.estado !== 'DESACTUALIZADA') {
+              <button class="btn" (click)="seleccionar(r)" [disabled]="seleccionando">Seleccionar esta oportunidad</button>
+            }
           </div>
         </div>
       }
@@ -77,10 +81,13 @@ import { mensajeError } from '../../../utils/errores';
 })
 export class RutasEducativasComponent implements OnInit {
   private rutaService = inject(RutaService);
+  private postulacionService = inject(PostulacionService);
+  private router = inject(Router);
 
   ruta: RutaEducativa | null = null;
   error: string | null = null;
   cargando = false;
+  seleccionando = false;
 
   ngOnInit(): void {
     this.cargando = true;
@@ -107,6 +114,19 @@ export class RutasEducativasComponent implements OnInit {
       error: (e) => {
         this.error = mensajeError(e);
         this.cargando = false;
+      },
+    });
+  }
+
+  /** HU-20: crea la postulación y lleva al detalle para cargar documentos. */
+  seleccionar(r: Recomendacion): void {
+    this.error = null;
+    this.seleccionando = true;
+    this.postulacionService.seleccionar(r.id).subscribe({
+      next: (p) => this.router.navigate(['/beneficiario/postulaciones', p.id]),
+      error: (e) => {
+        this.error = mensajeError(e);
+        this.seleccionando = false;
       },
     });
   }
