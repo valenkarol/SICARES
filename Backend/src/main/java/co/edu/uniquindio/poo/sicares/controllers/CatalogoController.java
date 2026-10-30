@@ -31,6 +31,8 @@ public class CatalogoController {
         c.put("tiposInstitucion", List.of(TipoInstitucion.values()));
         c.put("tiposBeneficio", List.of(TipoBeneficio.values()));
         c.put("tiposRequisito", List.of(TipoRequisito.values()));
+        c.put("estadosPostulacion", List.of(EstadoPostulacion.values()));
+        c.put("estadosDocumento", List.of(EstadoDocumento.values()));
         return c;
     }
 }
