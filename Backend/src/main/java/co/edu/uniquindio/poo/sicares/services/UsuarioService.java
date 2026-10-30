@@ -1,9 +1,12 @@
 package co.edu.uniquindio.poo.sicares.services;
 
 import co.edu.uniquindio.poo.sicares.dto.AdminDtos.*;
+import co.edu.uniquindio.poo.sicares.dto.PostulacionDtos.NotificacionResponse;
+import co.edu.uniquindio.poo.sicares.dto.PostulacionMapper;
 import co.edu.uniquindio.poo.sicares.exceptions.RecursoNoEncontradoException;
 import co.edu.uniquindio.poo.sicares.exceptions.ReglaNegocioException;
 import co.edu.uniquindio.poo.sicares.models.entities.*;
+import co.edu.uniquindio.poo.sicares.models.enums.EstadoPostulacion;
 import co.edu.uniquindio.poo.sicares.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
@@ -12,9 +15,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
-/** Administrador.gestionarUsuarios() e indicadores . */
+/** Administrador.gestionarUsuarios(), indicadores (KPIs) y bandeja de notificaciones. */
 @Service
 @RequiredArgsConstructor
 public class UsuarioService {
@@ -24,6 +30,8 @@ public class UsuarioService {
     private final ProgramaEducativoRepository programaRepository;
     private final OportunidadEducativaRepository oportunidadRepository;
     private final RutaEducativaRepository rutaRepository;
+    private final PostulacionRepository postulacionRepository;
+    private final NotificacionRepository notificacionRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Transactional(readOnly = true)
@@ -60,14 +68,42 @@ public class UsuarioService {
     public EstadisticasResponse estadisticas() {
         long totalBeneficiarios = beneficiarioRepository.count();
         long completos = beneficiarioRepository.countByPerfilCompletoTrue();
+        List<Postulacion> postulaciones = postulacionRepository.findAll();
+        Map<EstadoPostulacion, Long> porEstado = new EnumMap<>(EstadoPostulacion.class);
+        for (EstadoPostulacion e : EstadoPostulacion.values()) porEstado.put(e, 0L);
+        postulaciones.stream()
+                .collect(Collectors.groupingBy(Postulacion::getEstado, Collectors.counting()))
+                .forEach(porEstado::put);
         long conRuta = rutaRepository.findAll().stream()
                 .map(r -> r.getBeneficiario().getId())
                 .distinct()
                 .count();
         double porcentaje = totalBeneficiarios == 0 ? 0 : Math.round(completos * 1000.0 / totalBeneficiarios) / 10.0;
         return new EstadisticasResponse(totalBeneficiarios, completos, porcentaje, conRuta,
-                programaRepository.count(),
+                postulaciones.size(), porEstado, programaRepository.count(),
                 oportunidadRepository.findVigentes(LocalDate.now()).size());
+    }
+
+    // ------------------------------------------------ notificaciones del usuario autenticado (HU-26)
+
+    @Transactional(readOnly = true)
+    public List<NotificacionResponse> notificaciones(Long usuarioId) {
+        return notificacionRepository.findByUsuarioIdOrderByFechaEnvioDesc(usuarioId).stream()
+                .map(PostulacionMapper::toDto).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public long notificacionesNoLeidas(Long usuarioId) {
+        return notificacionRepository.countByUsuarioIdAndLeidaFalse(usuarioId);
+    }
+
+    @Transactional
+    public NotificacionResponse marcarLeida(Long usuarioId, Long notificacionId) {
+        Notificacion n = notificacionRepository.findById(notificacionId)
+                .filter(x -> x.getUsuario().getId().equals(usuarioId))
+                .orElseThrow(() -> new RecursoNoEncontradoException("Notificación", notificacionId));
+        n.marcarLeida();
+        return PostulacionMapper.toDto(n);
     }
 
     private UsuarioResponse toResponse(Usuario u) {

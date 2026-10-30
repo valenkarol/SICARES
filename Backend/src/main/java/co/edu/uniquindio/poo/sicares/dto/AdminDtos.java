@@ -1,11 +1,13 @@
 package co.edu.uniquindio.poo.sicares.dto;
 
+import co.edu.uniquindio.poo.sicares.models.enums.EstadoPostulacion;
 import co.edu.uniquindio.poo.sicares.models.enums.Rol;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 /** DTOs del módulo administrativo (HU-03 gestión de roles, gestionarUsuarios, KPIs). */
 public final class AdminDtos {
@@ -37,6 +39,8 @@ public final class AdminDtos {
             long perfilesCompletos,
             double porcentajePerfilesCompletos,
             long beneficiariosConRuta,
+            long totalPostulaciones,
+            Map<EstadoPostulacion, Long> postulacionesPorEstado,
             long totalProgramas,
             long oportunidadesVigentes
     ) {
