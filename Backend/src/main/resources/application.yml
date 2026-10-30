@@ -23,6 +23,22 @@ spring:
         jdbc:
           time_zone: America/Bogota
 
+  # ---------- Carga de documentos (Sprint 3, HU-22) ----------
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 10MB
+
+  # ---------- Correo (opcional; ver sicares.notificaciones.correo-habilitado) ----------
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USER:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+
 # ---------- Propiedades propias de SICARES ----------
 sicares:
   jwt:
@@ -33,6 +49,13 @@ sicares:
   admin-inicial:
     correo: admin@sicares.co
     contrasena: Admin123*
+  almacenamiento:
+    ruta-documentos: ${UPLOAD_DIR:./uploads}
+  notificaciones:
+    correo-habilitado: ${MAIL_ENABLED:false}
+    remitente: ${MAIL_USER:no-reply@sicares.co}
+    dias-anticipacion-recordatorio: 3
+    cron-recordatorios: "0 0 7 * * *"   # todos los días a las 7:00 a.m.
   politica-datos:
     version: "1.0"
 

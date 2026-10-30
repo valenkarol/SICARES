@@ -3,6 +3,8 @@ backend/.gradle/
 backend/build/
 backend/out/
 backend/uploads/
+Backend/uploads/
+uploads/
 backend/bin/
 !backend/gradle/wrapper/gradle-wrapper.jar
 

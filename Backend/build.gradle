@@ -32,7 +32,8 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-security'
     // --- Validaciones (@NotBlank, @Email, @Past, ...) ---
     implementation 'org.springframework.boot:spring-boot-starter-validation'
-    // --- Correo (spring-boot-starter-mail) se agrega en el Sprint 3 con las notificaciones ---
+    // --- Correo para notificaciones y recordatorios (Sprint 3, HU-26) ---
+    implementation 'org.springframework.boot:spring-boot-starter-mail'
 
     // --- JWT (token de sesión) ---
     implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
