@@ -1,5 +1,11 @@
 server:
   port: 8080
+  # RNF-05: limita cuántas solicitudes se procesan a la vez (las demás esperan en cola),
+  # así el motor de reglas no satura la CPU con 400 solicitudes concurrentes.
+  tomcat:
+    threads:
+      max: 50
+    accept-count: 500
 
 spring:
   application:
@@ -22,6 +28,8 @@ spring:
         format_sql: true
         jdbc:
           time_zone: America/Bogota
+        # RNF-05: carga requisitos y beneficios en lotes (evita una consulta por cada convocatoria en el motor)
+        default_batch_fetch_size: 50
 
   # ---------- Carga de documentos (Sprint 3, HU-22) ----------
   servlet:
@@ -38,6 +46,10 @@ spring:
     properties:
       mail.smtp.auth: true
       mail.smtp.starttls.enable: true
+      # RNF-06: si el servidor de correo no responde, no deja la postulación esperando indefinidamente
+      mail.smtp.connectiontimeout: 3000
+      mail.smtp.timeout: 3000
+      mail.smtp.writetimeout: 3000
 
 # ---------- Propiedades propias de SICARES ----------
 sicares:
@@ -62,3 +74,16 @@ sicares:
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
+
+# ---------- Métricas (RNF-04, RNF-05, RNF-06) y salud del servicio (RNF-11) ----------
+# /actuator/health es público; /actuator/metrics solo para ADMINISTRADOR (ver SecurityConfig).
+# Nginx no reenvía /actuator: en el servidor se consulta con curl a localhost:8080.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics
+  metrics:
+    distribution:
+      percentiles:
+        http.server.requests: 0.95

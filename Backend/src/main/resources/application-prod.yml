@@ -13,7 +13,7 @@ spring:
     username: ${DB_USER}
     password: ${DB_PASSWORD}
     hikari:
-      maximum-pool-size: 5
+      maximum-pool-size: 10                # RNF-05: 50 hilos de Tomcat necesitan más de 5 conexiones
   jpa:
     show-sql: false
     properties:

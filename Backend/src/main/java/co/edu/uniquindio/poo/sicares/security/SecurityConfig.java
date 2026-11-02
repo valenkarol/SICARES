@@ -59,6 +59,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/registro", "/api/auth/login").permitAll()
                         .requestMatchers("/api/catalogos/**").permitAll()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                        // RNF-11: salud del servicio (la usan el script de despliegue y la prueba de fallos)
+                        .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
+                        // RNF-04/05/06: métricas de tiempos y recursos, solo para el administrador
+                        .requestMatchers("/actuator/**").hasRole("ADMINISTRADOR")
                         .requestMatchers("/api/admin/**").hasRole("ADMINISTRADOR")
                         .requestMatchers("/api/beneficiario/**").hasRole("BENEFICIARIO")
                         .anyRequest().authenticated())
