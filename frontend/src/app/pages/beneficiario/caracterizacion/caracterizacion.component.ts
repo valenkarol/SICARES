@@ -139,7 +139,7 @@ type Seccion = 'personal' | 'victima' | 'socio' | 'trayectoria' | 'intereses' | 
 
         <!-- ================= HU-05 Situación de víctima ================= -->
         @case ('victima') {
-          <form (ngSubmit)="guardar(perfilService.guardarSituacionVictima(victima))">
+          <form #f="ngForm" (ngSubmit)="guardarVictima()">
             <label class="check"><input type="checkbox" name="esVictima" [(ngModel)]="victima.esVictima" />
               Soy víctima del conflicto armado</label>
             @if (victima.esVictima) {
@@ -157,7 +157,8 @@ type Seccion = 'personal' | 'victima' | 'socio' | 'trayectoria' | 'intereses' | 
               </div>
             }
             <p class="suave">Esta información está protegida por la Ley 1448 de 2011.</p>
-            <button class="btn" [disabled]="guardando">Guardar</button>
+            @for (m of erroresVictima; track m) { <div class="alerta alerta-error">{{ m }}</div> }
+            <button class="btn" [disabled]="f.invalid || guardando || erroresVictima.length > 0">Guardar</button>
           </form>
         }
 
@@ -182,7 +183,8 @@ type Seccion = 'personal' | 'victima' | 'socio' | 'trayectoria' | 'intereses' | 
               <div class="campo"><label>Personas a cargo *</label>
                 <input type="number" min="0" name="aCargo" [(ngModel)]="socio.personasACargo" required /></div>
             </div>
-            <button class="btn" [disabled]="f.invalid || guardando">Guardar</button>
+            @for (m of erroresSocio; track m) { <div class="alerta alerta-error">{{ m }}</div> }
+            <button class="btn" [disabled]="f.invalid || guardando || erroresSocio.length > 0">Guardar</button>
           </form>
         }
 
@@ -222,9 +224,10 @@ type Seccion = 'personal' | 'victima' | 'socio' | 'trayectoria' | 'intereses' | 
                 <div><button type="button" class="btn btn-peligro btn-chico" (click)="quitarEstudio(i)">Quitar</button></div>
               </div>
             }
+            @for (m of erroresTrayectoria; track m) { <div class="alerta alerta-error">{{ m }}</div> }
             <div class="fila">
               <button type="button" class="btn btn-sec" (click)="agregarEstudio()">+ Agregar estudio</button>
-              <button class="btn" [disabled]="f.invalid || guardando">Guardar</button>
+              <button class="btn" [disabled]="f.invalid || guardando || erroresTrayectoria.length > 0">Guardar</button>
             </div>
           </form>
         }
@@ -247,7 +250,7 @@ type Seccion = 'personal' | 'victima' | 'socio' | 'trayectoria' | 'intereses' | 
 
         <!-- ================= HU-09 Accesibilidad ================= -->
         @case ('accesibilidad') {
-          <form (ngSubmit)="guardar(perfilService.guardarAccesibilidad(accesibilidad))">
+          <form #f="ngForm" (ngSubmit)="guardar(perfilService.guardarAccesibilidad(accesibilidad))">
             <label class="check"><input type="checkbox" name="internet" [(ngModel)]="accesibilidad.tieneInternet" />
               Tengo acceso a internet</label>
             <label class="check"><input type="checkbox" name="disp" [(ngModel)]="accesibilidad.tieneDispositivos" />
@@ -265,7 +268,8 @@ type Seccion = 'personal' | 'victima' | 'socio' | 'trayectoria' | 'intereses' | 
                   @for (m of catalogos?.modalidades ?? []; track m) { <option [value]="m">{{ m | etiqueta }}</option> }
                 </select></div>
             </div>
-            <button class="btn" [disabled]="guardando">Guardar</button>
+            @for (m of erroresAccesibilidad; track m) { <div class="alerta alerta-error">{{ m }}</div> }
+            <button class="btn" [disabled]="f.invalid || guardando || erroresAccesibilidad.length > 0">Guardar</button>
           </form>
         }
       }
@@ -431,6 +435,90 @@ export class CaracterizacionComponent implements OnInit {
 
   guardarTrayectoria(): void {
     this.guardar(this.perfilService.guardarTrayectoria(this.trayectoria));
+  }
+
+  // ---------------------------------------------------------------- RNF-07: guardar en un solo intento
+  // Las mismas reglas que valida el backend (CaracterizacionService y PerfilEducativo.inconsistencias()),
+  // para que el botón Guardar no se habilite con datos que el servidor va a rechazar.
+
+  /** Orden de los niveles educativos (igual al enum NivelEducativo del backend). */
+  private static readonly NIVELES = ['NINGUNO', 'BASICA_PRIMARIA', 'BASICA_SECUNDARIA', 'MEDIA', 'TECNICO',
+    'TECNOLOGICO', 'UNIVERSITARIO'];
+
+  private get anioNacimiento(): number | null {
+    const f = this.perfil?.informacionPersonal?.fechaNacimiento ?? this.personal.fechaNacimiento;
+    const anio = f ? Number(f.substring(0, 4)) : NaN;
+    return Number.isNaN(anio) ? null : anio;
+  }
+
+  /** HU-05: si no es víctima no puede estar en el RUV (se limpia al guardar), y el hecho no puede ser antes de nacer. */
+  guardarVictima(): void {
+    const datos: SituacionVictima = {
+      ...this.victima,
+      inscritoRUV: this.victima.esVictima && this.victima.inscritoRUV,
+    };
+    this.guardar(this.perfilService.guardarSituacionVictima(datos));
+  }
+
+  get erroresVictima(): string[] {
+    const e: string[] = [];
+    const v = this.victima;
+    if (v.esVictima && !v.hechoVictimizante) e.push('Selecciona el hecho victimizante');
+    const nacimiento = this.perfil?.informacionPersonal?.fechaNacimiento;
+    if (v.esVictima && v.fechaHecho && nacimiento && v.fechaHecho < nacimiento) {
+      e.push('La fecha del hecho victimizante no puede ser anterior a tu fecha de nacimiento');
+    }
+    return e;
+  }
+
+  get erroresSocio(): string[] {
+    const e: string[] = [];
+    if (this.socio.personasACargo > this.socio.integrantesHogar) {
+      e.push('Las personas a cargo no pueden superar a los integrantes del hogar');
+    }
+    return e;
+  }
+
+  get erroresTrayectoria(): string[] {
+    const e: string[] = [];
+    const t = this.trayectoria;
+    const g = Number(t.ultimoGradoAprobado ?? 0);
+    const nivel = CaracterizacionComponent.NIVELES.indexOf(t.nivelActual);
+    switch (t.nivelActual) {
+      case 'NINGUNO':
+        if (g > 4) e.push(`Con grado ${g} aprobado tu nivel no puede ser "Ninguno"`);
+        break;
+      case 'BASICA_PRIMARIA':
+        if (g < 5 || g > 8) e.push('Básica primaria terminada corresponde a un último grado entre 5 y 8');
+        break;
+      case 'BASICA_SECUNDARIA':
+        if (g < 9 || g > 10) e.push('Básica secundaria terminada corresponde a un último grado de 9 o 10');
+        break;
+      default:
+        if (g !== 11) e.push('Para este nivel el último grado aprobado debe ser 11');
+    }
+    if (t.anioUltimoEstudio > new Date().getFullYear()) e.push('El año del último estudio no puede ser futuro');
+    const nacimiento = this.anioNacimiento;
+    if (nacimiento !== null && t.anioUltimoEstudio < nacimiento + 5) {
+      e.push('El año del último estudio no es coherente con tu fecha de nacimiento');
+    }
+    t.estudios.forEach((x, i) => {
+      if (x.anioInicio && x.anioFin && x.anioFin < x.anioInicio) {
+        e.push(`Estudio ${i + 1}: el año de fin es menor que el de inicio`);
+      }
+      if (x.estado === 'COMPLETO' && CaracterizacionComponent.NIVELES.indexOf(x.nivel) > nivel) {
+        e.push(`Estudio ${i + 1}: si lo terminaste, tu último nivel aprobado debe ser al menos ese nivel`);
+      }
+    });
+    return e;
+  }
+
+  get erroresAccesibilidad(): string[] {
+    const e: string[] = [];
+    if (this.accesibilidad.modalidadPreferida === 'VIRTUAL' && !this.accesibilidad.tieneInternet) {
+      e.push('Elegiste la modalidad virtual como preferida pero no marcaste que tienes internet');
+    }
+    return e;
   }
 
   agregarEstudio(): void {

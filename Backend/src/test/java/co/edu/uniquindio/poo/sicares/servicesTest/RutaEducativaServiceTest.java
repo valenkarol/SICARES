@@ -18,6 +18,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import co.edu.uniquindio.poo.sicares.services.motorReglas.HuellaIntegridad;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -252,5 +254,51 @@ class RutaEducativaServiceTest {
         List<RutaResponse> historial = service.historial(ID);
 
         assertEquals(List.of(2, 1), historial.stream().map(RutaResponse::version).toList());
+    }
+
+    // ------------------------------------------------------------------ RNF-14 y KPI (revisión de métricas)
+
+    @Test
+    @DisplayName("RNF-14 / KPI: al generar la ruta guarda la huella de cada oportunidad y la duración del cálculo")
+    void generarGuardaHuellaYDuracion() {
+        when(beneficiarioRepository.findById(ID)).thenReturn(Optional.of(beneficiario));
+        when(motorReglas.generarRuta(beneficiario.getPerfil())).thenReturn(rutaDelMotor(80, 70));
+        when(rutaRepository.findFirstByBeneficiarioIdOrderByVersionDesc(ID)).thenReturn(Optional.empty());
+        ArgumentCaptor<RutaEducativa> guardada = ArgumentCaptor.forClass(RutaEducativa.class);
+        when(rutaRepository.save(guardada.capture())).thenAnswer(inv -> inv.getArgument(0));
+
+        service.solicitarRuta(ID);
+
+        RutaEducativa ruta = guardada.getValue();
+        assertNotNull(ruta.getDuracionGeneracionMs());
+        ruta.getRecomendaciones().forEach(r -> assertEquals(
+                HuellaIntegridad.deOportunidad(r.getOportunidad()), r.getHuellaOferta()));
+    }
+
+    @Test
+    @DisplayName("RNF-14: si la oferta se altera después de generar la ruta, al consultarla queda DESACTUALIZADA")
+    void consultarDetectaAlteracion() {
+        RutaEducativa ruta = rutaDelMotor(80);
+        ruta.setEstado(EstadoRuta.VIGENTE);
+        Recomendacion rec = ruta.getRecomendaciones().get(0);
+        rec.setHuellaOferta(HuellaIntegridad.deOportunidad(rec.getOportunidad()));
+        rec.getOportunidad().getPrograma().setMunicipio("Calarcá");   // alteración no autorizada simulada
+        when(rutaRepository.findFirstByBeneficiarioIdOrderByVersionDesc(ID)).thenReturn(Optional.of(ruta));
+
+        RutaResponse r = service.consultarActual(ID).orElseThrow();
+
+        assertEquals(EstadoRuta.DESACTUALIZADA, r.estado());
+    }
+
+    @Test
+    @DisplayName("RNF-14: si la oferta no cambió, la ruta sigue VIGENTE (sin falsos positivos)")
+    void consultarSinAlteracion() {
+        RutaEducativa ruta = rutaDelMotor(80);
+        ruta.setEstado(EstadoRuta.VIGENTE);
+        Recomendacion rec = ruta.getRecomendaciones().get(0);
+        rec.setHuellaOferta(HuellaIntegridad.deOportunidad(rec.getOportunidad()));
+        when(rutaRepository.findFirstByBeneficiarioIdOrderByVersionDesc(ID)).thenReturn(Optional.of(ruta));
+
+        assertEquals(EstadoRuta.VIGENTE, service.consultarActual(ID).orElseThrow().estado());
     }
 }

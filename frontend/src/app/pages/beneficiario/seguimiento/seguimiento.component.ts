@@ -74,9 +74,9 @@ import { mensajeError } from '../../../utils/errores';
                     }
                   </td>
                   <td>
-                    @if (r.requiereDocumento && puedeEditar) {
+                    @if (r.requiereDocumento && puedeCargar(r)) {
                       <label class="btn btn-sec btn-chico">
-                        {{ documentoDe(r) ? 'Reemplazar' : 'Cargar' }}
+                        {{ documentoDe(r)?.estado === 'RECHAZADO' ? 'Cargar de nuevo' : documentoDe(r) ? 'Reemplazar' : 'Cargar' }}
                         <input type="file" hidden accept=".pdf,.jpg,.jpeg,.png" (change)="cargar(r, $event)" />
                       </label>
                     }
@@ -134,6 +134,15 @@ export class SeguimientoComponent implements OnInit {
 
   get puedeEditar(): boolean {
     return !!this.p && (this.p.estado === 'SELECCIONADA' || this.p.estado === 'DOCUMENTOS_PENDIENTES');
+  }
+
+  /**
+   * RNF-15: antes de registrar se cargan todos los documentos; ya POSTULADA solo se puede volver a cargar
+   * un documento que el administrador RECHAZÓ (la misma regla que aplica PostulacionService en el backend).
+   */
+  puedeCargar(r: Requisito): boolean {
+    if (this.puedeEditar) return true;
+    return this.p?.estado === 'POSTULADA' && this.documentoDe(r)?.estado === 'RECHAZADO';
   }
 
   documentoDe(r: Requisito): DocumentoPostulacion | undefined {
