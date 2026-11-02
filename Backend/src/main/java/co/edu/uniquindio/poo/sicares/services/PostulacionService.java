@@ -10,6 +10,7 @@ import co.edu.uniquindio.poo.sicares.models.enums.EstadoPostulacion;
 import co.edu.uniquindio.poo.sicares.notifications.PostulacionEstadoCambiadoEvent;
 import co.edu.uniquindio.poo.sicares.notifications.ServicioNotificaciones;
 import co.edu.uniquindio.poo.sicares.repository.*;
+import co.edu.uniquindio.poo.sicares.services.motorReglas.HuellaIntegridad;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.io.Resource;
@@ -17,12 +18,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.time.LocalDate;
+
 import java.util.List;
 
 /**
- * Proceso 3: Postulación y seguimiento (HU-20 a HU-25).
- * Implementa Beneficiario.seleccionarOportunidad(), Beneficiario.consultarPostulaciones()
- * y Administrador.actualizarEstadoPostulacion().
+ * Postulación y seguimiento .
  */
 @Service
 @RequiredArgsConstructor
@@ -41,7 +44,7 @@ public class PostulacionService {
 
     // ======================================================== Beneficiario
 
-    /** HU-20 seleccionarOportunidad(r: Recomendacion): Postulacion */
+    /** seleccionarOportunidad Postulacion */
     @Transactional
     public PostulacionResponse seleccionarOportunidad(Long beneficiarioId, Long recomendacionId) {
         Beneficiario b = beneficiarioRepository.findById(beneficiarioId)
@@ -55,6 +58,11 @@ public class PostulacionService {
         OportunidadEducativa op = rec.getOportunidad();
         if (!op.estaVigente()) {
             throw new ReglaNegocioException("La convocatoria ya cerró o no tiene cupos");
+        }
+        // RNF-14: si la oferta cambió después de generar la ruta, la recomendación ya no es confiable
+        if (HuellaIntegridad.fueAlterada(rec.getHuellaOferta(), op)) {
+            throw new ReglaNegocioException("La información de esta oportunidad cambió después de generar tu ruta. "
+                    + "Genera una ruta nueva para ver los datos actualizados.");
         }
         boolean yaExiste = postulacionRepository.existsByBeneficiarioIdAndOportunidadIdAndEstadoNotIn(
                 beneficiarioId, op.getId(),
@@ -95,7 +103,14 @@ public class PostulacionService {
     public PostulacionResponse cargarDocumento(Long beneficiarioId, Long postulacionId, Long requisitoId,
                                                MultipartFile archivo) {
         Postulacion p = buscarDelBeneficiario(beneficiarioId, postulacionId);
-        if (p.estaFinalizada() || p.getEstado().ordinal() >= EstadoPostulacion.POSTULADA.ordinal()) {
+        // RNF-15: antes de registrar se pueden cargar todos; ya POSTULADA solo se reemplaza un documento RECHAZADO
+        boolean reemplazaRechazado = p.getDocumentos().stream()
+                .anyMatch(d -> d.getRequisito() != null && d.getRequisito().getId().equals(requisitoId)
+                        && d.getEstado() == EstadoDocumento.RECHAZADO);
+        boolean editable = p.getEstado() == EstadoPostulacion.SELECCIONADA
+                || p.getEstado() == EstadoPostulacion.DOCUMENTOS_PENDIENTES
+                || (p.getEstado() == EstadoPostulacion.POSTULADA && reemplazaRechazado);
+        if (!editable) {
             throw new ReglaNegocioException("Ya no puedes modificar documentos de esta postulación");
         }
         if (archivo == null || archivo.isEmpty()) {
@@ -117,6 +132,12 @@ public class PostulacionService {
         if (!doc.validarFormato()) {
             throw new ReglaNegocioException("Formato no permitido. Solo PDF, JPG o PNG de máximo 5 MB");
         }
+        // RNF-15: el tipo que se guarda es el que tiene el contenido, no el que dice el navegador
+        String tipoReal = detectarTipoReal(archivo);
+        if (tipoReal == null) {
+            throw new ReglaNegocioException("El contenido del archivo no es un PDF, JPG o PNG válido");
+        }
+        doc.setTipoArchivo(tipoReal);
 
         // Si ya había un documento para ese requisito, se reemplaza
         p.getDocumentos().stream()
@@ -141,6 +162,10 @@ public class PostulacionService {
         EstadoPostulacion anterior = p.getEstado();
         if (!p.getOportunidad().estaVigente()) {
             throw new ReglaNegocioException("La convocatoria ya cerró");
+        }
+        LocalDate apertura = p.getOportunidad().getFechaAperturaInscripcion();
+        if (apertura != null && LocalDate.now().isBefore(apertura)) {
+            throw new ReglaNegocioException("Las inscripciones de esta convocatoria abren el " + apertura);
         }
         boolean registrada = p.registrar(p.getBeneficiario());
         if (registrada) {
@@ -199,14 +224,29 @@ public class PostulacionService {
         if (req.estado() == EstadoPostulacion.POSTULADA && !p.documentosPendientes().isEmpty()) {
             throw new ReglaNegocioException("La postulación aún tiene documentos pendientes");
         }
+        // RNF-15: no se admite a nadie con documentos sin validar o rechazados
+        if (req.estado() == EstadoPostulacion.ADMITIDA) {
+            boolean todosValidados = p.getDocumentos().stream()
+                    .allMatch(d -> d.getEstado() == EstadoDocumento.VALIDADO);
+            if (!todosValidados || !p.documentosPendientes().isEmpty()) {
+                throw new ReglaNegocioException("Antes de admitir, valida todos los documentos de la postulación");
+            }
+        }
         return cambiarEstadoInterno(p, req.estado(), admin, req.observacion());
     }
 
     /** El administrador valida o rechaza un documento cargado. */
     @Transactional
     public PostulacionResponse cambiarEstadoDocumento(Long documentoId, EstadoDocumento estado) {
+        // RNF-15: el administrador solo valida o rechaza documentos cargados
+        if (estado != EstadoDocumento.VALIDADO && estado != EstadoDocumento.RECHAZADO) {
+            throw new ReglaNegocioException("Un documento solo se puede validar o rechazar");
+        }
         DocumentoPostulacion d = documentoRepository.findById(documentoId)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Documento", documentoId));
+        if (d.getPostulacion().estaFinalizada()) {
+            throw new ReglaNegocioException("La postulación ya terminó; no se pueden cambiar sus documentos");
+        }
         d.setEstado(estado);
         Postulacion p = d.getPostulacion();
         if (estado == EstadoDocumento.RECHAZADO) {
@@ -249,6 +289,15 @@ public class PostulacionService {
             throw new RecursoNoEncontradoException("Postulación", postulacionId);
         }
         return p;
+    }
+
+    /** Lee los primeros bytes del archivo para conocer su tipo real (RNF-15). */
+    private static String detectarTipoReal(MultipartFile archivo) {
+        try (InputStream in = archivo.getInputStream()) {
+            return DocumentoPostulacion.detectarTipoReal(in.readNBytes(8));
+        } catch (IOException e) {
+            throw new ReglaNegocioException("No fue posible leer el archivo");
+        }
     }
 
     /** Archivo listo para enviarse en la respuesta HTTP. */

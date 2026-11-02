@@ -52,6 +52,23 @@ public class DocumentoPostulacion {
     @JoinColumn(name = "requisito_id")
     private Requisito requisito;
 
+    /**
+     * detecta el tipo REAL del archivo por sus primeros bytes
+     */
+    public static String detectarTipoReal(byte[] b) {
+        if (b == null) return null;
+        if (b.length >= 4 && b[0] == '%' && b[1] == 'P' && b[2] == 'D' && b[3] == 'F') {
+            return "application/pdf";
+        }
+        if (b.length >= 4 && (b[0] & 0xFF) == 0x89 && b[1] == 'P' && b[2] == 'N' && b[3] == 'G') {
+            return "image/png";
+        }
+        if (b.length >= 3 && (b[0] & 0xFF) == 0xFF && (b[1] & 0xFF) == 0xD8 && (b[2] & 0xFF) == 0xFF) {
+            return "image/jpeg";
+        }
+        return null;
+    }
+
     /** Solo PDF, JPG o PNG de máximo 5 MB. */
     public boolean validarFormato() {
         return tipoArchivo != null

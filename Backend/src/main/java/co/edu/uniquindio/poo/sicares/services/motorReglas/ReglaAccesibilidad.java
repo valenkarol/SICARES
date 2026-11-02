@@ -51,7 +51,7 @@ public class ReglaAccesibilidad implements ReglaCompatibilidad {
         return new ResultadoEvaluacion(true, puntaje, obs);
     }
 
-    /** 1.0 mismo municipio; 0.5 mismo departamento con transporte; 0 si no hay forma de llegar. */
+
     private double factorUbicacion(InformacionPersonal info, ProgramaEducativo p, CondicionAccesibilidad c,
                                    List<String> obs) {
         if (p.getMunicipio().equalsIgnoreCase(info.getMunicipio())) {
@@ -66,7 +66,8 @@ public class ReglaAccesibilidad implements ReglaCompatibilidad {
             return 0.5;
         }
         obs.add("Se ofrece en " + p.getMunicipio() + " y tus condiciones de transporte no permiten llegar");
-        return p.getModalidad() == Modalidad.PRESENCIAL ? 0 : 0.3;
+        // RNF-02: presencial o híbrido sin forma de llegar a la sede => no es viable (antes el híbrido daba 0.3)
+        return 0;
     }
 
     @Override

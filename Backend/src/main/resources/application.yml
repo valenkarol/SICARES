@@ -75,14 +75,17 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
 
-# ---------- Métricas (RNF-04, RNF-05, RNF-06) y salud del servicio (RNF-11) ----------
-# /actuator/health es público; /actuator/metrics solo para ADMINISTRADOR (ver SecurityConfig).
+# /actuator/health es público; /actuator/metrics solo para ADMINISTRADOR.
 # Nginx no reenvía /actuator: en el servidor se consulta con curl a localhost:8080.
 management:
   endpoints:
     web:
       exposure:
         include: health,metrics
+  # El correo es opcional (ADR-06): si no hay credenciales, /actuator/health no debe quedar en DOWN
+  health:
+    mail:
+      enabled: false
   metrics:
     distribution:
       percentiles:

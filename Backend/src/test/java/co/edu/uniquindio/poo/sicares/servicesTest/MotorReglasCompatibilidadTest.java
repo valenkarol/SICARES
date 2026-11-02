@@ -20,8 +20,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * Pruebas unitarias del motor de reglas — HU-17 Analizar compatibilidad.
- * Casos de TestRail relacionados: CP-12 (programa compatible) y CP-13 (programa excluido).
+ * Pruebas unitarias del motor de reglas — Analizar compatibilidad.
  */
 class MotorReglasCompatibilidadTest {
 
@@ -246,5 +245,55 @@ class MotorReglasCompatibilidadTest {
     @DisplayName("HU-17: sin oportunidades vigentes la ruta queda vacía")
     void sinOportunidades() {
         assertTrue(motor(List.of()).generarRuta(perfil).getRecomendaciones().isEmpty());
+    }
+
+    // ------------------------------------------------------------------ RNF-02 y RNF-17 (revisión de métricas)
+
+    @Test
+    @DisplayName("RNF-02: un programa HÍBRIDO en otro departamento al que no puede llegar no entra en la ruta")
+    void hibridoFueraDeAlcanceExcluido() {
+        Institucion otra = new Institucion();
+        otra.setNombre("Institución de Risaralda");
+        otra.setDepartamento("Risaralda");
+        otra.setMunicipio("Pereira");
+        OportunidadEducativa hibrido = oportunidad("Técnico híbrido en Pereira", NivelEducativo.TECNICO);
+        hibrido.getPrograma().setModalidad(Modalidad.HIBRIDA);
+        hibrido.getPrograma().setMunicipio("Pereira");
+        hibrido.getPrograma().setInstitucion(otra);
+        MotorReglas motor = motor(List.of(hibrido));
+
+        assertFalse(motor.evaluar(perfil, hibrido).isCumple());
+        assertTrue(motor.generarRuta(perfil).getRecomendaciones().isEmpty());
+    }
+
+    @Test
+    @DisplayName("RNF-17: un criterio nuevo se agrega como otra regla, sin modificar MotorReglas ni las reglas existentes")
+    void reglaNuevaSinModificarMotor() {
+        OportunidadEducativa compatible = oportunidad("Tecnólogo en Análisis de Software", NivelEducativo.TECNOLOGICO);
+        MotorReglas motor = motor(List.of(compatible));
+        assertTrue(motor.evaluar(perfil, compatible).isCumple(), "Sin la regla nueva la oportunidad es compatible");
+
+        // Criterio nuevo de ejemplo: solo programas del periodo 2026-2
+        ReglaCompatibilidad soloPeriodo20262 = new ReglaCompatibilidad() {
+            @Override
+            public ResultadoEvaluacion evaluar(PerfilEducativo p, OportunidadEducativa o) {
+                return "2026-2".equals(o.getPeriodoAcademico())
+                        ? ResultadoEvaluacion.cumple(1.0)
+                        : ResultadoEvaluacion.noCumple("No es del periodo 2026-2");
+            }
+
+            @Override
+            public double getPeso() {
+                return 1;
+            }
+
+            @Override
+            public boolean esEliminatoria() {
+                return true;
+            }
+        };
+        motor.registrarRegla(soloPeriodo20262);
+
+        assertFalse(motor.evaluar(perfil, compatible).isCumple(), "La regla nueva se aplica sin tocar el motor");
     }
 }

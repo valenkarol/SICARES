@@ -11,6 +11,7 @@ import co.edu.uniquindio.poo.sicares.notifications.ServicioNotificaciones;
 import co.edu.uniquindio.poo.sicares.repository.*;
 import co.edu.uniquindio.poo.sicares.services.AlmacenamientoService;
 import co.edu.uniquindio.poo.sicares.services.PostulacionService;
+import co.edu.uniquindio.poo.sicares.services.motorReglas.HuellaIntegridad;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -21,6 +22,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.mock.web.MockMultipartFile;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.Optional;
 
@@ -116,6 +118,23 @@ class PostulacionServiceTest {
         return r;
     }
 
+    /** RNF-15: un PDF real empieza con la firma "%PDF". */
+    private static MockMultipartFile pdfValido() {
+        return new MockMultipartFile("archivo", "diploma.pdf", "application/pdf",
+                "%PDF-1.4 documento de prueba".getBytes(StandardCharsets.US_ASCII));
+    }
+
+    private DocumentoPostulacion documento(EstadoDocumento estado) {
+        DocumentoPostulacion d = new DocumentoPostulacion();
+        d.setNombreArchivo("diploma.pdf");
+        d.setTipoArchivo("application/pdf");
+        d.setTamanoBytes(100);
+        d.setRutaAlmacenamiento("postulacion-7/anterior.pdf");
+        d.setRequisito(requisitoDocumento);
+        d.setEstado(estado);
+        return d;
+    }
+
     private Postulacion postulacion(EstadoPostulacion estado, boolean exigeDocumento) {
         Postulacion p = new Postulacion();
         p.setId(POSTULACION_ID);
@@ -192,7 +211,7 @@ class PostulacionServiceTest {
         when(postulacionRepository.findById(POSTULACION_ID)).thenReturn(Optional.of(p));
         when(requisitoRepository.findById(REQUISITO_DOC_ID)).thenReturn(Optional.of(requisitoDocumento));
         when(almacenamiento.guardar(any(), eq("postulacion-" + POSTULACION_ID))).thenReturn("postulacion-7/a.pdf");
-        MockMultipartFile pdf = new MockMultipartFile("archivo", "diploma.pdf", "application/pdf", new byte[1024]);
+        MockMultipartFile pdf = pdfValido();
 
         PostulacionResponse r = service.cargarDocumento(BENEFICIARIO_ID, POSTULACION_ID, REQUISITO_DOC_ID, pdf);
 
@@ -274,5 +293,87 @@ class PostulacionServiceTest {
         assertThrows(ReglaNegocioException.class, () -> service.actualizarEstado(ADMIN_ID, POSTULACION_ID,
                 new CambioEstadoRequest(EstadoPostulacion.MATRICULADA, null)));
         verifyNoInteractions(eventos);
+    }
+
+    // ------------------------------------------------------------------ RNF-14 y RNF-15 (revisión de métricas)
+
+    @Test
+    @DisplayName("RNF-14: si la oferta cambió después de generar la ruta, no deja seleccionar la oportunidad")
+    void seleccionarConOfertaAlterada() {
+        OportunidadEducativa o = oportunidadVigente(false);
+        Recomendacion rec = recomendacionDe(beneficiario, o);
+        rec.setHuellaOferta(HuellaIntegridad.deOportunidad(o));
+        o.getPrograma().setMunicipio("Calarcá");   // alteración después de generar la ruta
+        when(beneficiarioRepository.findById(BENEFICIARIO_ID)).thenReturn(Optional.of(beneficiario));
+        when(recomendacionRepository.findById(10L)).thenReturn(Optional.of(rec));
+
+        assertThrows(ReglaNegocioException.class, () -> service.seleccionarOportunidad(BENEFICIARIO_ID, 10L));
+        verify(postulacionRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("RNF-15: un ejecutable renombrado a .pdf se rechaza aunque el navegador diga application/pdf")
+    void rechazaEjecutableRenombrado() {
+        Postulacion p = postulacion(EstadoPostulacion.SELECCIONADA, true);
+        when(postulacionRepository.findById(POSTULACION_ID)).thenReturn(Optional.of(p));
+        when(requisitoRepository.findById(REQUISITO_DOC_ID)).thenReturn(Optional.of(requisitoDocumento));
+        byte[] ejecutable = {'M', 'Z', (byte) 0x90, 0x00, 0x03, 0x00, 0x00, 0x00};
+        MockMultipartFile falso = new MockMultipartFile("archivo", "diploma.pdf", "application/pdf", ejecutable);
+
+        assertThrows(ReglaNegocioException.class,
+                () -> service.cargarDocumento(BENEFICIARIO_ID, POSTULACION_ID, REQUISITO_DOC_ID, falso));
+        verifyNoInteractions(almacenamiento);
+    }
+
+    @Test
+    @DisplayName("RNF-15: en una postulación POSTULADA se puede volver a cargar un documento RECHAZADO")
+    void recargaDocumentoRechazado() {
+        Postulacion p = postulacion(EstadoPostulacion.POSTULADA, true);
+        p.agregarDocumento(documento(EstadoDocumento.RECHAZADO));
+        when(postulacionRepository.findById(POSTULACION_ID)).thenReturn(Optional.of(p));
+        when(requisitoRepository.findById(REQUISITO_DOC_ID)).thenReturn(Optional.of(requisitoDocumento));
+        when(almacenamiento.guardar(any(), eq("postulacion-" + POSTULACION_ID))).thenReturn("postulacion-7/nuevo.pdf");
+
+        PostulacionResponse r = service.cargarDocumento(BENEFICIARIO_ID, POSTULACION_ID, REQUISITO_DOC_ID, pdfValido());
+
+        assertEquals(1, r.documentos().size(), "El documento rechazado se reemplaza");
+        assertEquals(EstadoDocumento.CARGADO, r.documentos().get(0).estado());
+        verify(almacenamiento).eliminar("postulacion-7/anterior.pdf");
+    }
+
+    @Test
+    @DisplayName("RNF-15: en una postulación POSTULADA no se cambian documentos que no fueron rechazados")
+    void noCambiaDocumentosDePostulada() {
+        Postulacion p = postulacion(EstadoPostulacion.POSTULADA, true);
+        p.agregarDocumento(documento(EstadoDocumento.CARGADO));
+        when(postulacionRepository.findById(POSTULACION_ID)).thenReturn(Optional.of(p));
+
+        assertThrows(ReglaNegocioException.class,
+                () -> service.cargarDocumento(BENEFICIARIO_ID, POSTULACION_ID, REQUISITO_DOC_ID, pdfValido()));
+        verifyNoInteractions(almacenamiento);
+    }
+
+    @Test
+    @DisplayName("RNF-15: el administrador no puede admitir con documentos sin validar")
+    void noAdmiteConDocumentosSinValidar() {
+        Administrador admin = new Administrador();
+        admin.setId(ADMIN_ID);
+        Postulacion p = postulacion(EstadoPostulacion.POSTULADA, true);
+        p.agregarDocumento(documento(EstadoDocumento.CARGADO));
+        when(usuarioRepository.findById(ADMIN_ID)).thenReturn(Optional.of(admin));
+        when(postulacionRepository.findById(POSTULACION_ID)).thenReturn(Optional.of(p));
+
+        assertThrows(ReglaNegocioException.class, () -> service.actualizarEstado(ADMIN_ID, POSTULACION_ID,
+                new CambioEstadoRequest(EstadoPostulacion.ADMITIDA, "Cumple")));
+        assertEquals(EstadoPostulacion.POSTULADA, p.getEstado());
+        verifyNoInteractions(eventos);
+    }
+
+    @Test
+    @DisplayName("RNF-15: el administrador solo puede validar o rechazar un documento")
+    void documentoSoloValidarORechazar() {
+        assertThrows(ReglaNegocioException.class,
+                () -> service.cambiarEstadoDocumento(1L, EstadoDocumento.PENDIENTE));
+        verifyNoInteractions(documentoRepository);
     }
 }
