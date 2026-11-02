@@ -415,4 +415,92 @@ class CaracterizacionServiceTest {
             assertFalse(service.revocarAutorizacion(ID).autorizacionAceptada());
         }
     }
+
+    //  RNF-13, RNF-01 y RNF-16 (revisión de métricas)
+
+    @Nested
+    @DisplayName("RNF-13 Identificación única y RNF-01/16 consistencia del perfil")
+    class MetricasCalidadTest {
+
+        @Test
+        @DisplayName("RNF-13: no permite caracterizar a otra cuenta con un número de documento ya registrado")
+        void documentoDuplicadoRechazado() {
+            when(beneficiarioRepository.existsByPerfilInformacionPersonalNumeroDocumentoAndIdNot("1094000000", ID))
+                    .thenReturn(true);
+
+            assertThrows(ReglaNegocioException.class, () -> service.guardarInformacionPersonal(ID, adulto(25)));
+            verify(beneficiarioRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("RNF-01: nivel MEDIA con último grado 7 es una contradicción y no se guarda")
+        void nivelYGradoIncoherentes() {
+            existeBeneficiario();
+
+            assertThrows(ReglaNegocioException.class, () -> service.guardarTrayectoria(ID,
+                    new TrayectoriaEducativaDto(NivelEducativo.MEDIA, 7, 2020, List.of())));
+            verify(beneficiarioRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("RNF-01: un estudio UNIVERSITARIO completo con nivel actual MEDIA es una contradicción")
+        void estudioCompletoSuperiorAlNivel() {
+            existeBeneficiario();
+            EstudioRealizadoDto universidad = new EstudioRealizadoDto(null, NivelEducativo.UNIVERSITARIO,
+                    "Universidad del Quindío", "Ingeniería", EstadoEstudio.COMPLETO, 2015, 2020);
+
+            assertThrows(ReglaNegocioException.class, () -> service.guardarTrayectoria(ID,
+                    new TrayectoriaEducativaDto(NivelEducativo.MEDIA, 11, 2020, List.of(universidad))));
+        }
+
+        @Test
+        @DisplayName("RNF-01: preferir modalidad virtual sin internet es una contradicción")
+        void virtualSinInternet() {
+            existeBeneficiario();
+
+            assertThrows(ReglaNegocioException.class, () -> service.guardarCondicionAccesibilidad(ID,
+                    new CondicionAccesibilidadDto(false, true, "PUBLICO", 10, Modalidad.VIRTUAL)));
+        }
+
+        @Test
+        @DisplayName("RNF-16: modificar otra sección no puede dejar el perfil contradictorio")
+        void modificacionPosteriorNoGeneraContradiccion() {
+            existeBeneficiario();
+            // Trayectoria guardada primero: último estudio en 1995
+            service.guardarTrayectoria(ID, new TrayectoriaEducativaDto(NivelEducativo.MEDIA, 11, 1995, List.of()));
+
+            // Después registra que tiene 25 años (nació ~2001): habría estudiado antes de nacer => se rechaza
+            assertThrows(ReglaNegocioException.class, () -> service.guardarInformacionPersonal(ID, adulto(25)));
+        }
+
+        @Test
+        @DisplayName("RNF-01: el hecho victimizante no puede ser anterior a la fecha de nacimiento")
+        void hechoAntesDeNacer() {
+            existeBeneficiario();
+            service.guardarInformacionPersonal(ID, adulto(25));
+
+            assertThrows(ReglaNegocioException.class, () -> service.guardarSituacionVictima(ID,
+                    new SituacionVictimaDto(true, true, "Desplazamiento forzado",
+                            LocalDate.now().minusYears(30), "Florencia")));
+        }
+
+        @Test
+        @DisplayName("RNF-01: un perfil coherente en sus 6 secciones queda completo")
+        void perfilCoherenteQuedaCompleto() {
+            existeBeneficiario();
+
+            service.guardarInformacionPersonal(ID, adulto(30));
+            service.guardarSituacionVictima(ID,
+                    new SituacionVictimaDto(true, true, "Desplazamiento forzado", LocalDate.of(2015, 1, 1), "Armenia"));
+            service.guardarSituacionSocioeconomica(ID,
+                    new SituacionSocioeconomicaDto("A3", 1, new BigDecimal("1300000"), "Desempleado", 4, 1));
+            service.guardarTrayectoria(ID, new TrayectoriaEducativaDto(NivelEducativo.BASICA_SECUNDARIA, 9, 2012, List.of()));
+            service.guardarIntereses(ID, new InteresesRequest(List.of(new InteresProfesionalDto("Salud", null))));
+            PerfilResponse r = service.guardarCondicionAccesibilidad(ID,
+                    new CondicionAccesibilidadDto(true, true, "PUBLICO", 10, Modalidad.VIRTUAL));
+
+            assertTrue(r.completo());
+            assertNotNull(beneficiario.getPerfil().getFechaCompletado(), "KPI: se guarda cuándo quedó completo");
+        }
+    }
 }

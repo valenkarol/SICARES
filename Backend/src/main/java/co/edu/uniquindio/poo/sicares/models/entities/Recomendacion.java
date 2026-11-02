@@ -37,6 +37,10 @@ public class Recomendacion {
     @JoinColumn(name = "oportunidad_id", nullable = false)
     private OportunidadEducativa oportunidad;
 
+    /** RNF-14: huella SHA-256 de la oferta en el momento de generar la ruta (ver HuellaIntegridad). */
+    @Column(name = "huella_oferta", length = 64)
+    private String huellaOferta;
+
     /** Beneficios vigentes del programa recomendado. */
     public List<Beneficio> getBeneficiosAplicables() {
         return oportunidad.getPrograma().getBeneficios().stream()

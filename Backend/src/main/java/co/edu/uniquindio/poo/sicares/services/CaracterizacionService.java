@@ -1,6 +1,4 @@
 package co.edu.uniquindio.poo.sicares.services;
-
-
 import co.edu.uniquindio.poo.sicares.dto.CaracterizacionDtos;
 import co.edu.uniquindio.poo.sicares.dto.CaracterizacionMapper;
 import co.edu.uniquindio.poo.sicares.exceptions.RecursoNoEncontradoException;
@@ -70,6 +68,12 @@ public class CaracterizacionService {
     @Transactional
     public CaracterizacionDtos.PerfilResponse guardarInformacionPersonal(Long beneficiarioId, CaracterizacionDtos.InformacionPersonalDto dto) {
         validarEdadYDocumento(dto);
+        // RNF-13: una misma persona no puede tener dos caracterizaciones (dos cuentas con el mismo documento)
+        if (beneficiarioRepository.existsByPerfilInformacionPersonalNumeroDocumentoAndIdNot(
+                dto.numeroDocumento(), beneficiarioId)) {
+            throw new ReglaNegocioException("Ya existe una persona caracterizada con ese número de documento. "
+                    + "Si es tu documento, inicia sesión con la cuenta con la que te registraste.");
+        }
         Beneficiario b = buscarBeneficiarioConAutorizacion(beneficiarioId);
         PerfilEducativo perfil = b.obtenerOCrearPerfil();
 
@@ -211,6 +215,12 @@ public class CaracterizacionService {
     // ---------------------------------------------------------------- auxiliares
 
     private CaracterizacionDtos.PerfilResponse finalizarCambio(Beneficiario b) {
+        // RNF-01 / RNF-16: un cambio no puede dejar secciones del perfil contradictorias.
+        // La excepción hace rollback de la transacción: no se guarda nada.
+        List<String> inconsistencias = b.getPerfil().inconsistencias();
+        if (!inconsistencias.isEmpty()) {
+            throw new ReglaNegocioException(String.join(". ", inconsistencias));
+        }
         b.getPerfil().actualizar();          // recalcula porcentaje y completitud
         marcarRutasDesactualizadas(b.getId()); // HU-11/HU-27: el perfil cambió, las rutas anteriores ya no aplican
         beneficiarioRepository.save(b);

@@ -1,6 +1,5 @@
 package co.edu.uniquindio.poo.sicares.models.entities;
 
-
 import co.edu.uniquindio.poo.sicares.models.enums.EstadoRuta;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -33,6 +32,10 @@ public class RutaEducativa {
 
     @Column(nullable = false)
     private int version;
+
+    /** KPI "tiempo promedio de generación de una ruta" y métrica 3.4.2 del Plan de Calidad. */
+    @Column(name = "duracion_generacion_ms")
+    private Long duracionGeneracionMs;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "beneficiario_id", nullable = false)

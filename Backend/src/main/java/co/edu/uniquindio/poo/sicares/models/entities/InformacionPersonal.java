@@ -10,8 +10,13 @@ import lombok.Setter;
 import java.time.LocalDate;
 import java.time.Period;
 
+/**
+ * RNF-13 Identificación única: el número de documento no se puede repetir entre beneficiarios.
+ * (Solo el número, sin el tipo: en Colombia la persona conserva el número al pasar de TI a CC.)
+ */
 @Entity
-@Table(name = "informacion_personal")
+@Table(name = "informacion_personal",
+        uniqueConstraints = @UniqueConstraint(name = "uk_info_numero_documento", columnNames = "numero_documento"))
 @Getter
 @Setter
 @NoArgsConstructor
