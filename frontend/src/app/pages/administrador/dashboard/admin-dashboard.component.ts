@@ -31,6 +31,34 @@ import { mensajeError } from '../../../utils/errores';
         <div class="card"><div class="kpi">{{ e.oportunidadesVigentes }}</div><div class="suave">Convocatorias abiertas</div></div>
       </div>
 
+      <!-- KPIs del Documento de Definición, agrupados por proceso de negocio -->
+      <div class="card">
+        <h2>Proceso 1 · Caracterización del usuario</h2>
+        <div class="grid">
+          <div><div class="kpi">{{ e.porcentajePerfilesCompletos }}%</div><div class="suave">Caracterizaciones completadas</div></div>
+          <div><div class="kpi">{{ e.porcentajeFormulariosIncompletos }}%</div><div class="suave">Perfiles iniciados con información incompleta</div></div>
+          <div><div class="kpi">{{ e.minutosPromedioCaracterizacion }} min</div><div class="suave">Tiempo promedio para completar la caracterización</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Proceso 2 · Planeación de rutas educativas</h2>
+        <div class="grid">
+          <div><div class="kpi">{{ e.porcentajeUsuariosConRuta }}%</div><div class="suave">Usuarios con ruta educativa generada</div></div>
+          <div><div class="kpi">{{ e.msPromedioGeneracionRuta }} ms</div><div class="suave">Tiempo promedio de generación de una ruta</div></div>
+          <div><div class="kpi">{{ e.porcentajeRutasSeleccionadas }}%</div><div class="suave">Usuarios con ruta que avanzan a postulación</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Proceso 3 · Postulación y seguimiento</h2>
+        <div class="grid">
+          <div><div class="kpi">{{ e.porcentajePostulacionesCompletadas }}%</div><div class="suave">Postulaciones completadas frente a iniciadas</div></div>
+          <div><div class="kpi">{{ e.horasPromedioSeleccionAPostulacion }} h</div><div class="suave">Tiempo promedio entre la selección y la postulación formal</div></div>
+          <div><div class="kpi">{{ e.porcentajeRecordatoriosAtendidos }}%</div><div class="suave">Recordatorios de cierre atendidos a tiempo</div></div>
+        </div>
+      </div>
+
       <div class="card">
         <h2>Postulaciones por estado</h2>
         <table class="tabla">

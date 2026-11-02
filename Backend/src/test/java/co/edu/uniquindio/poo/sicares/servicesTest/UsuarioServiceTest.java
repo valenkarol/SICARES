@@ -15,6 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -37,13 +38,15 @@ class UsuarioServiceTest {
     @Mock private PostulacionRepository postulacionRepository;
     @Mock private NotificacionRepository notificacionRepository;
     @Mock private PasswordEncoder passwordEncoder;
+    @Mock private RecordatorioRepository recordatorioRepository;
 
     private UsuarioService service;
 
     @BeforeEach
     void setUp() {
         service = new UsuarioService(usuarioRepository, beneficiarioRepository, programaRepository,
-                oportunidadRepository, rutaRepository, postulacionRepository, notificacionRepository, passwordEncoder);
+                oportunidadRepository, rutaRepository, postulacionRepository, notificacionRepository, passwordEncoder,
+                recordatorioRepository);
     }
 
     private static Postulacion postulacionEn(EstadoPostulacion estado) {
@@ -73,6 +76,40 @@ class UsuarioServiceTest {
         assertEquals(0L, e.postulacionesPorEstado().get(EstadoPostulacion.MATRICULADA));
         assertEquals(EstadoPostulacion.values().length, e.postulacionesPorEstado().size());
         assertEquals(50.0, e.porcentajePerfilesCompletos());
+    }
+
+    @Test
+    @DisplayName("KPIs: postulaciones completadas, rutas seleccionadas y tiempo entre selección y postulación")
+    void kpisProcesos2y3() {
+        Beneficiario ana = new Beneficiario();
+        ana.setId(1L);
+        Beneficiario luis = new Beneficiario();
+        luis.setId(2L);
+        RutaEducativa rutaAna = new RutaEducativa();
+        rutaAna.setBeneficiario(ana);
+        rutaAna.setDuracionGeneracionMs(200L);
+        RutaEducativa rutaLuis = new RutaEducativa();
+        rutaLuis.setBeneficiario(luis);
+        rutaLuis.setDuracionGeneracionMs(400L);
+
+        Postulacion registrada = postulacionEn(EstadoPostulacion.POSTULADA);
+        registrada.setBeneficiario(ana);
+        registrada.setFechaSeleccion(LocalDateTime.of(2026, 10, 1, 8, 0));
+        registrada.setFechaPostulacion(LocalDateTime.of(2026, 10, 1, 10, 0));
+        Postulacion sinRegistrar = postulacionEn(EstadoPostulacion.SELECCIONADA);
+        sinRegistrar.setBeneficiario(ana);
+
+        when(beneficiarioRepository.count()).thenReturn(4L);
+        when(postulacionRepository.findAll()).thenReturn(List.of(registrada, sinRegistrar));
+        when(rutaRepository.findAll()).thenReturn(List.of(rutaAna, rutaLuis));
+
+        EstadisticasResponse e = service.estadisticas();
+
+        assertEquals(50.0, e.porcentajeUsuariosConRuta(), "2 de 4 beneficiarios tienen ruta");
+        assertEquals(300.0, e.msPromedioGeneracionRuta());
+        assertEquals(50.0, e.porcentajeRutasSeleccionadas(), "1 de 2 usuarios con ruta se postuló");
+        assertEquals(50.0, e.porcentajePostulacionesCompletadas(), "1 de 2 postulaciones se registró");
+        assertEquals(2.0, e.horasPromedioSeleccionAPostulacion());
     }
 
     @Test

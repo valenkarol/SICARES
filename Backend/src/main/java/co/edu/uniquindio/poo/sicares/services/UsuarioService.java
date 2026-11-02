@@ -14,10 +14,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /** Administrador.gestionarUsuarios(), indicadores (KPIs) y bandeja de notificaciones. */
@@ -33,6 +35,7 @@ public class UsuarioService {
     private final PostulacionRepository postulacionRepository;
     private final NotificacionRepository notificacionRepository;
     private final PasswordEncoder passwordEncoder;
+    private final RecordatorioRepository recordatorioRepository;
 
     @Transactional(readOnly = true)
     public List<UsuarioResponse> listar() {
@@ -63,7 +66,7 @@ public class UsuarioService {
         return toResponse(usuarioRepository.save(a));
     }
 
-    /** KPIs del documento de definición del proyecto. */
+    /** KPIs del documento de definición del proyecto (procesos 1, 2 y 3). */
     @Transactional(readOnly = true)
     public EstadisticasResponse estadisticas() {
         long totalBeneficiarios = beneficiarioRepository.count();
@@ -74,14 +77,70 @@ public class UsuarioService {
         postulaciones.stream()
                 .collect(Collectors.groupingBy(Postulacion::getEstado, Collectors.counting()))
                 .forEach(porEstado::put);
-        long conRuta = rutaRepository.findAll().stream()
+        List<RutaEducativa> rutas = rutaRepository.findAll();
+        long conRuta = rutas.stream()
+                .filter(r -> r.getBeneficiario() != null)
                 .map(r -> r.getBeneficiario().getId())
                 .distinct()
                 .count();
-        double porcentaje = totalBeneficiarios == 0 ? 0 : Math.round(completos * 1000.0 / totalBeneficiarios) / 10.0;
-        return new EstadisticasResponse(totalBeneficiarios, completos, porcentaje, conRuta,
-                postulaciones.size(), porEstado, programaRepository.count(),
-                oportunidadRepository.findVigentes(LocalDate.now()).size());
+
+        // ---------- Proceso 1: Caracterización ----------
+        List<PerfilEducativo> perfiles = beneficiarioRepository.findAll().stream()
+                .map(Beneficiario::getPerfil)
+                .filter(Objects::nonNull)
+                .toList();
+        long perfilesIniciados = perfiles.size();
+        double minutosCaracterizacion = perfiles.stream()
+                .filter(pe -> pe.getFechaCreacion() != null && pe.getFechaCompletado() != null)
+                .mapToLong(pe -> Duration.between(pe.getFechaCreacion(), pe.getFechaCompletado()).toMinutes())
+                .average().orElse(0);
+
+        // ---------- Proceso 2: Rutas educativas ----------
+        double msGeneracionRuta = rutas.stream()
+                .filter(r -> r.getDuracionGeneracionMs() != null)
+                .mapToLong(RutaEducativa::getDuracionGeneracionMs)
+                .average().orElse(0);
+        long conPostulacion = postulaciones.stream()
+                .filter(p -> p.getBeneficiario() != null)
+                .map(p -> p.getBeneficiario().getId())
+                .distinct()
+                .count();
+
+        // ---------- Proceso 3: Postulación y seguimiento ----------
+        long completadas = postulaciones.stream().filter(p -> p.getFechaPostulacion() != null).count();
+        double horasSeleccionAPostulacion = postulaciones.stream()
+                .filter(p -> p.getFechaSeleccion() != null && p.getFechaPostulacion() != null)
+                .mapToLong(p -> Duration.between(p.getFechaSeleccion(), p.getFechaPostulacion()).toMinutes())
+                .average().orElse(0) / 60.0;
+        // Un recordatorio de cierre se "atiende a tiempo" si el usuario registró la postulación a más tardar ese día
+        List<Recordatorio> cierres = recordatorioRepository.findAll().stream()
+                .filter(r -> r.isEnviado() && r.getTitulo() != null && r.getTitulo().startsWith("Cierre"))
+                .toList();
+        long atendidos = cierres.stream()
+                .filter(r -> r.getPostulacion() != null && r.getPostulacion().getFechaPostulacion() != null
+                        && r.getFechaEvento() != null
+                        && !r.getPostulacion().getFechaPostulacion().toLocalDate().isAfter(r.getFechaEvento()))
+                .count();
+
+        return new EstadisticasResponse(totalBeneficiarios, completos, porcentaje(completos, totalBeneficiarios),
+                conRuta, postulaciones.size(), porEstado, programaRepository.count(),
+                oportunidadRepository.findVigentes(LocalDate.now()).size(),
+                porcentaje(perfilesIniciados - Math.min(completos, perfilesIniciados), perfilesIniciados),
+                redondear(minutosCaracterizacion),
+                porcentaje(conRuta, totalBeneficiarios),
+                redondear(msGeneracionRuta),
+                porcentaje(conPostulacion, conRuta),
+                porcentaje(completadas, postulaciones.size()),
+                redondear(horasSeleccionAPostulacion),
+                porcentaje(atendidos, cierres.size()));
+    }
+
+    private static double porcentaje(long parte, long total) {
+        return total == 0 ? 0 : Math.round(parte * 1000.0 / total) / 10.0;
+    }
+
+    private static double redondear(double valor) {
+        return Math.round(valor * 10) / 10.0;
     }
 
     // ------------------------------------------------ notificaciones del usuario autenticado (HU-26)

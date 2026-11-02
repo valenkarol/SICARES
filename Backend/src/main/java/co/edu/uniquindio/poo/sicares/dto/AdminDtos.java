@@ -42,7 +42,18 @@ public final class AdminDtos {
             long totalPostulaciones,
             Map<EstadoPostulacion, Long> postulacionesPorEstado,
             long totalProgramas,
-            long oportunidadesVigentes
+            long oportunidadesVigentes,
+            // ---- KPIs del Documento de Definición que faltaban (proceso 1) ----
+            double porcentajeFormulariosIncompletos,
+            double minutosPromedioCaracterizacion,
+            // ---- proceso 2 ----
+            double porcentajeUsuariosConRuta,
+            double msPromedioGeneracionRuta,
+            double porcentajeRutasSeleccionadas,
+            // ---- proceso 3 ----
+            double porcentajePostulacionesCompletadas,
+            double horasPromedioSeleccionAPostulacion,
+            double porcentajeRecordatoriosAtendidos
     ) {
     }
 }

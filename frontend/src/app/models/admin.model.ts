@@ -20,4 +20,13 @@ export interface Estadisticas {
   postulacionesPorEstado: Record<string, number>;
   totalProgramas: number;
   oportunidadesVigentes: number;
+  // KPIs del Documento de Definición (procesos 1, 2 y 3)
+  porcentajeFormulariosIncompletos: number;
+  minutosPromedioCaracterizacion: number;
+  porcentajeUsuariosConRuta: number;
+  msPromedioGeneracionRuta: number;
+  porcentajeRutasSeleccionadas: number;
+  porcentajePostulacionesCompletadas: number;
+  horasPromedioSeleccionAPostulacion: number;
+  porcentajeRecordatoriosAtendidos: number;
 }
