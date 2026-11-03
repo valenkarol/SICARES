@@ -106,4 +106,13 @@ export interface Catalogos {
   tiposRequisito: string[];
   estadosPostulacion: string[];
   estadosDocumento: string[];
+  /** Departamento 1 ── 1..* municipios (enum Departamento del backend). */
+  departamentos: DepartamentoCatalogo[];
+}
+
+/** Un departamento con sus municipios (la capital primero). */
+export interface DepartamentoCatalogo {
+  codigo: string;   // constante del enum, ej. QUINDIO
+  nombre: string;   // nombre oficial, ej. Quindío (es lo que se guarda)
+  municipios: string[];
 }

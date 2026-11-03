@@ -8,6 +8,7 @@ import { CatalogoService } from '../../../services/catalogo.service';
 import { OfertaService } from '../../../services/oferta.service';
 import { EtiquetaPipe } from '../../../utils/etiqueta.pipe';
 import { mensajeError } from '../../../utils/errores';
+import { buscarDepartamento, municipioOficial, municipiosDe } from '../../../utils/ubicacion';
 
 /** HU-14 Gestionar programas educativos (relación institución-programa y programa-requisito). */
 @Component({
@@ -24,7 +25,7 @@ import { mensajeError } from '../../../utils/errores';
         <div class="grid-2">
           <div class="campo"><label>Nombre *</label><input name="nombre" [(ngModel)]="form.nombre" required /></div>
           <div class="campo"><label>Institución *</label>
-            <select name="inst" [(ngModel)]="form.institucionId" required>
+            <select name="inst" [(ngModel)]="form.institucionId" required (ngModelChange)="cambiarInstitucion()">
               @for (i of instituciones; track i.id) { <option [ngValue]="i.id">{{ i.nombre }}</option> }
             </select></div>
           <div class="campo"><label>Nivel *</label>
@@ -43,7 +44,17 @@ import { mensajeError } from '../../../utils/errores';
             <input type="number" min="1" name="dur" [(ngModel)]="form.duracionPeriodos" required /></div>
           <div class="campo"><label>Costo por periodo (0 = gratuito) *</label>
             <input type="number" min="0" name="costo" [(ngModel)]="form.costoPeriodo" required /></div>
-          <div class="campo"><label>Municipio *</label><input name="mpio" [(ngModel)]="form.municipio" required /></div>
+          <!-- El programa guarda solo el municipio; el departamento sirve para filtrar la lista (enum Departamento) -->
+          <div class="campo"><label>Departamento donde se ofrece *</label>
+            <select name="deptoPrograma" [(ngModel)]="departamentoPrograma" required (ngModelChange)="cambiarDepartamento()">
+              <option value="" disabled>Selecciona el departamento</option>
+              @for (d of catalogos?.departamentos ?? []; track d.codigo) { <option [value]="d.nombre">{{ d.nombre }}</option> }
+            </select></div>
+          <div class="campo"><label>Municipio *</label>
+            <select name="mpio" [(ngModel)]="form.municipio" required [disabled]="!municipios.length">
+              <option value="" disabled>{{ municipios.length ? 'Selecciona el municipio' : 'Primero elige el departamento' }}</option>
+              @for (m of municipios; track m) { <option [value]="m">{{ m }}</option> }
+            </select></div>
         </div>
         <label class="check"><input type="checkbox" name="activo" [(ngModel)]="form.activo" /> Programa activo</label>
 
@@ -97,8 +108,48 @@ export class ProgramasComponent implements OnInit {
   editandoId: number | null = null;
   error: string | null = null;
 
+  /** Solo para filtrar los municipios (no se guarda en el programa). */
+  departamentoPrograma = 'Quindío';
+
+  get municipios(): string[] {
+    return municipiosDe(this.catalogos?.departamentos, this.departamentoPrograma);
+  }
+
+  cambiarDepartamento(): void {
+    this.form.municipio = municipioOficial(this.municipios, this.form.municipio);
+  }
+
+  /** Al elegir la institución se propone su departamento. */
+  cambiarInstitucion(): void {
+    const inst = this.instituciones.find((i) => i.id === this.form.institucionId);
+    if (inst && !this.form.municipio) {
+      this.departamentoPrograma = buscarDepartamento(this.catalogos?.departamentos, inst.departamento)?.nombre
+        ?? this.departamentoPrograma;
+    }
+  }
+
+  /** Busca el departamento del municipio guardado (primero el de la institución, por si el nombre se repite). */
+  private ubicarMunicipio(): void {
+    const deps = this.catalogos?.departamentos ?? [];
+    if (!deps.length || !this.form.municipio) return;
+    const inst = this.instituciones.find((i) => i.id === this.form.institucionId);
+    const propio = buscarDepartamento(deps, inst?.departamento);
+    const d = propio && municipioOficial(propio.municipios, this.form.municipio)
+      ? propio
+      : deps.find((x) => municipioOficial(x.municipios, this.form.municipio));
+    if (d) {
+      this.departamentoPrograma = d.nombre;
+      this.form.municipio = municipioOficial(d.municipios, this.form.municipio);
+    } else {
+      this.form.municipio = '';   // dato viejo que no está en la lista: el admin debe elegirlo de nuevo
+    }
+  }
+
   ngOnInit(): void {
-    this.catalogoService.obtener().subscribe((c) => (this.catalogos = c));
+    this.catalogoService.obtener().subscribe((c) => {
+      this.catalogos = c;
+      this.ubicarMunicipio();
+    });
     this.oferta.instituciones().subscribe((i) => (this.instituciones = i));
     this.oferta.requisitos().subscribe((r) => (this.requisitos = r));
     this.cargar();
@@ -125,6 +176,7 @@ export class ProgramasComponent implements OnInit {
       duracionPeriodos: p.duracionPeriodos, costoPeriodo: p.costoPeriodo, municipio: p.municipio, activo: p.activo,
       institucionId: p.institucionId, requisitoIds: p.requisitos.map((r) => r.id!),
     };
+    this.ubicarMunicipio();
   }
 
   guardar(): void {

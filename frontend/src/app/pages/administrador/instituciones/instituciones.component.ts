@@ -2,9 +2,12 @@ import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AlertaComponent } from '../../../components/alerta.component';
 import { Institucion } from '../../../models/oferta.model';
+import { DepartamentoCatalogo } from '../../../models/perfil.model';
+import { CatalogoService } from '../../../services/catalogo.service';
 import { OfertaService } from '../../../services/oferta.service';
 import { EtiquetaPipe } from '../../../utils/etiqueta.pipe';
 import { mensajeError } from '../../../utils/errores';
+import { buscarDepartamento, municipioOficial, municipiosDe } from '../../../utils/ubicacion';
 
 /** HU-13 Gestionar instituciones educativas. */
 @Component({
@@ -25,8 +28,17 @@ import { mensajeError } from '../../../utils/errores';
             <select name="tipo" [(ngModel)]="form.tipo" required>
               <option value="PUBLICA">Pública</option><option value="PRIVADA">Privada</option>
             </select></div>
-          <div class="campo"><label>Departamento *</label><input name="depto" [(ngModel)]="form.departamento" required /></div>
-          <div class="campo"><label>Municipio *</label><input name="mpio" [(ngModel)]="form.municipio" required /></div>
+          <!-- Departamento 1 ── 1..* municipios (enum Departamento) -->
+          <div class="campo"><label>Departamento *</label>
+            <select name="depto" [(ngModel)]="form.departamento" required (ngModelChange)="cambiarDepartamento()">
+              <option value="" disabled>Selecciona el departamento</option>
+              @for (d of departamentos; track d.codigo) { <option [value]="d.nombre">{{ d.nombre }}</option> }
+            </select></div>
+          <div class="campo"><label>Municipio *</label>
+            <select name="mpio" [(ngModel)]="form.municipio" required [disabled]="!municipios.length">
+              <option value="" disabled>{{ municipios.length ? 'Selecciona el municipio' : 'Primero elige el departamento' }}</option>
+              @for (m of municipios; track m) { <option [value]="m">{{ m }}</option> }
+            </select></div>
           <div class="campo"><label>Correo de contacto</label><input type="email" name="correo" [(ngModel)]="form.correoContacto" /></div>
         </div>
         <div class="fila">
@@ -60,6 +72,8 @@ import { mensajeError } from '../../../utils/errores';
 })
 export class InstitucionesComponent implements OnInit {
   private oferta = inject(OfertaService);
+  private catalogos = inject(CatalogoService);
+  departamentos: DepartamentoCatalogo[] = [];
   lista: Institucion[] = [];
   form: Institucion = this.vacio();
   editandoId: number | null = null;
@@ -67,6 +81,27 @@ export class InstitucionesComponent implements OnInit {
 
   ngOnInit(): void {
     this.cargar();
+    this.catalogos.obtener().subscribe((c) => {
+      this.departamentos = c.departamentos ?? [];
+      this.ajustarUbicacion();
+    });
+  }
+
+  get municipios(): string[] {
+    return municipiosDe(this.departamentos, this.form.departamento);
+  }
+
+  /** Si el municipio elegido no es del nuevo departamento, se borra. */
+  cambiarDepartamento(): void {
+    this.form.municipio = municipioOficial(this.municipios, this.form.municipio);
+  }
+
+  /** Datos viejos escritos a mano ("Quindio", "armenia") se muestran con el nombre de la lista. */
+  private ajustarUbicacion(): void {
+    if (!this.departamentos.length) return;
+    const d = buscarDepartamento(this.departamentos, this.form.departamento);
+    this.form.departamento = d?.nombre ?? '';
+    this.form.municipio = d ? municipioOficial(d.municipios, this.form.municipio) : '';
   }
 
   cargar(): void {
@@ -81,6 +116,7 @@ export class InstitucionesComponent implements OnInit {
   editar(i: Institucion): void {
     this.form = { ...i };
     this.editandoId = i.id ?? null;
+    this.ajustarUbicacion();
   }
 
   guardar(): void {

@@ -23,12 +23,14 @@ import { mensajeError } from '../../../utils/errores';
 
     <app-alerta [mensaje]="error" />
     @if (ruta?.estado === 'DESACTUALIZADA') {
-      <div class="alerta alerta-aviso">Tu perfil cambió desde que se generó esta ruta. Genera una nueva para ver
-        recomendaciones actualizadas.</div>
+      <!-- Con el perfil completo la ruta se regenera sola; si sigue desactualizada es porque no hay oferta compatible -->
+      <div class="alerta alerta-aviso">Tu perfil o la oferta cambiaron desde que se generó esta ruta y por ahora no hay
+        oportunidades vigentes compatibles con tu nuevo perfil. Te avisaremos cuando tu ruta se actualice.</div>
     }
 
     @if (ruta) {
-      <p class="suave">Versión {{ ruta.version }} · generada el {{ ruta.fechaGeneracion | date: 'dd/MM/yyyy HH:mm' }}</p>
+      <p class="suave">Versión {{ ruta.version }} · generada el {{ ruta.fechaGeneracion | date: 'dd/MM/yyyy HH:mm' }}
+        · se actualiza automáticamente cuando cambias tu perfil</p>
 
       @for (r of ruta.recomendaciones; track r.id) {
         <div class="card recomendacion">
@@ -68,7 +70,8 @@ import { mensajeError } from '../../../utils/errores';
     } @else if (!cargando) {
       <div class="card vacio">
         <p>Aún no tienes una ruta educativa.</p>
-        <p>Completa tu <a routerLink="/beneficiario/caracterizacion">caracterización</a> al 100% y presiona “Generar mi ruta”.</p>
+        <p>Completa tu <a routerLink="/beneficiario/caracterizacion">caracterización</a> al 100%: tu ruta se genera
+          automáticamente (también puedes presionar “Generar mi ruta”).</p>
       </div>
     }
   `,
@@ -118,7 +121,7 @@ export class RutasEducativasComponent implements OnInit {
     });
   }
 
-  /** HU-20: crea la postulación y lleva al detalle para cargar documentos. */
+  /**crea la postulación y lleva al detalle para cargar documentos. */
   seleccionar(r: Recomendacion): void {
     this.error = null;
     this.seleccionando = true;
