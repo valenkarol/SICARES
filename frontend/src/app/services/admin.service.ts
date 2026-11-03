@@ -2,7 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_URL } from '../config/api.config';
-import { Estadisticas, Usuario } from '../models/admin.model';
+import { Estadisticas, ResultadoCorreo, Usuario } from '../models/admin.model';
 
 /** gestión de usuarios/roles y KPIs. */
 @Injectable({ providedIn: 'root' })
@@ -26,5 +26,11 @@ export class AdminService {
 
   estadisticas(): Observable<Estadisticas> {
     return this.http.get<Estadisticas>(`${this.url}/estadisticas`);
+  }
+
+  /** Envía un correo de prueba (al admin si no se indica destino) y devuelve el error real si falla. */
+  probarCorreo(para?: string): Observable<ResultadoCorreo> {
+    const params = para ? new HttpParams().set('para', para) : undefined;
+    return this.http.post<ResultadoCorreo>(`${this.url}/correo/prueba`, null, { params });
   }
 }

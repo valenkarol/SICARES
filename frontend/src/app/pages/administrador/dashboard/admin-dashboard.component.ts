@@ -1,7 +1,7 @@
 import { KeyValuePipe } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { AlertaComponent } from '../../../components/alerta.component';
-import { Estadisticas } from '../../../models/admin.model';
+import { Estadisticas, ResultadoCorreo } from '../../../models/admin.model';
 import { AdminService } from '../../../services/admin.service';
 import { PostulacionService } from '../../../services/postulacion.service';
 import { EtiquetaPipe } from '../../../utils/etiqueta.pipe';
@@ -9,7 +9,7 @@ import { mensajeError } from '../../../utils/errores';
 
 /**
  * Panel del administrador con los KPIs del documento del proyecto
- * (caracterización, oferta, rutas y postulaciones) y envío manual de recordatorios (HU-26).
+ * (caracterización, oferta, rutas y postulaciones), envío manual de recordatorios y prueba del correo (HU-26).
  */
 @Component({
   selector: 'app-admin-dashboard',
@@ -71,10 +71,32 @@ import { mensajeError } from '../../../utils/errores';
 
     <div class="card">
       <h2>Recordatorios</h2>
-      <p class="suave">Se envían automáticamente todos los días a las 7:00 a.m. Puedes ejecutar el envío ahora para pruebas.</p>
+      <p class="suave">Se envían automáticamente: el sistema revisa cada minuto y envía cada recordatorio en cuanto
+        llega su fecha (3 días antes del cierre de inscripciones, la admisión y la matrícula). Puedes forzar el envío
+        ahora para pruebas.</p>
       <button class="btn btn-sec" (click)="procesarRecordatorios()">Enviar recordatorios pendientes</button>
     </div>
+
+    <div class="card">
+      <h2>Correo (Gmail)</h2>
+      <p class="suave">Envía un correo de prueba para comprobar que las notificaciones llegan al correo. Si falla,
+        aquí aparece el motivo exacto (correo deshabilitado, contraseña de aplicación incorrecta, sin conexión…).</p>
+      <div class="fila">
+        <input class="entrada" type="email" placeholder="Destino (vacío = tu correo)" [value]="correoPrueba"
+               (input)="correoPrueba = $any($event.target).value" aria-label="Correo de destino de la prueba" />
+        <button class="btn btn-sec" (click)="probarCorreo()" [disabled]="probandoCorreo">
+          {{ probandoCorreo ? 'Enviando...' : 'Enviar correo de prueba' }}
+        </button>
+      </div>
+      @if (resultadoCorreo) {
+        <div class="alerta" [class.alerta-ok]="resultadoCorreo.enviado" [class.alerta-error]="!resultadoCorreo.enviado"
+             role="status" style="margin-top:12px">{{ resultadoCorreo.detalle }}</div>
+      }
+    </div>
   `,
+  styles: [`
+    .entrada { font: inherit; padding: 8px 11px; border: 1px solid var(--marino); border-radius: 8px; min-width: 260px; }
+  `],
 })
 export class AdminDashboardComponent implements OnInit {
   private admin = inject(AdminService);
@@ -85,6 +107,25 @@ export class AdminDashboardComponent implements OnInit {
 
   ngOnInit(): void {
     this.admin.estadisticas().subscribe({ next: (e) => (this.e = e), error: (err) => (this.error = mensajeError(err)) });
+  }
+
+  correoPrueba = '';
+  probandoCorreo = false;
+  resultadoCorreo: ResultadoCorreo | null = null;
+
+  probarCorreo(): void {
+    this.probandoCorreo = true;
+    this.resultadoCorreo = null;
+    this.admin.probarCorreo(this.correoPrueba.trim() || undefined).subscribe({
+      next: (r) => {
+        this.resultadoCorreo = r;
+        this.probandoCorreo = false;
+      },
+      error: (err) => {
+        this.resultadoCorreo = { enviado: false, detalle: mensajeError(err) };
+        this.probandoCorreo = false;
+      },
+    });
   }
 
   procesarRecordatorios(): void {

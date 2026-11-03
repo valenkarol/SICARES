@@ -18,7 +18,7 @@ import { mensajeError } from '../../utils/errores';
           <p>Sistema de Caracterización<br />y Seguimiento Educativo</p>
         </div>
         <div class="cuerpo">
-          <div class="titulo-rosa">Iniciar sesión</div>
+          <h2 class="titulo">Iniciar sesión</h2>
           <p class="suave centro-sup">Accede a tu cuenta para continuar</p>
           <app-alerta [mensaje]="error" />
           <form (ngSubmit)="ingresar()" #f="ngForm">
@@ -47,8 +47,11 @@ import { mensajeError } from '../../utils/errores';
     .cabecera h1 { color: var(--rosa); margin: 0 0 6px; font-size: 1.8rem; }
     .cabecera p { color: #fff; margin: 0; font-size: 0.9rem; font-weight: 500; }
     .cuerpo { padding: 22px 28px 26px; }
-    .titulo-rosa { background: var(--rosa); color: var(--marino); text-align: center; font-weight: 700;
-      padding: 8px; border-radius: 6px; border: 1px solid var(--marino); }
+    /* Título de la tarjeta (antes parecía un botón): texto grande, sin fondo ni borde */
+    .titulo { text-align: center; font-size: 1.75rem; font-weight: 700; color: var(--marino); margin: 2px 0 0;
+      letter-spacing: 0.2px; }
+    .titulo::after { content: ''; display: block; width: 56px; height: 3px; margin: 8px auto 0;
+      border-radius: 3px; background: var(--rosa); }
     .centro-sup { text-align: center; color: var(--marino); margin: 10px 0 16px; }
     .ancho { width: 100%; margin-top: 4px; }
     .centro-btn { text-align: center; margin-top: 10px; }

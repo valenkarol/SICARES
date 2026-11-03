@@ -30,3 +30,9 @@ export interface Estadisticas {
   horasPromedioSeleccionAPostulacion: number;
   porcentajeRecordatoriosAtendidos: number;
 }
+
+/** Resultado del correo de prueba (POST /api/admin/correo/prueba). */
+export interface ResultadoCorreo {
+  enviado: boolean;
+  detalle: string;
+}
