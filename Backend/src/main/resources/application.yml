@@ -38,18 +38,23 @@ spring:
       max-request-size: 10MB
 
   # ---------- Correo (opcional; ver sicares.notificaciones.correo-habilitado) ----------
+  # Para que lleguen a Gmail se necesitan las 3 variables: MAIL_ENABLED=true, MAIL_USER (la cuenta Gmail que envía)
+  # y MAIL_PASSWORD (contraseña de APLICACIÓN de 16 letras, no la contraseña normal). Ver guía de correcciones §B.
   mail:
     host: smtp.gmail.com
     port: 587
     username: ${MAIL_USER:}
     password: ${MAIL_PASSWORD:}
+    default-encoding: UTF-8              # tildes y ñ correctas en el asunto y el cuerpo
     properties:
       mail.smtp.auth: true
       mail.smtp.starttls.enable: true
-      # RNF-06: si el servidor de correo no responde, no deja la postulación esperando indefinidamente
-      mail.smtp.connectiontimeout: 3000
-      mail.smtp.timeout: 3000
-      mail.smtp.writetimeout: 3000
+      mail.smtp.starttls.required: true
+      mail.smtp.ssl.trust: smtp.gmail.com
+      # El correo se envía en segundo plano (EnviadorCorreo), así que la petición del usuario no espera estos tiempos
+      mail.smtp.connectiontimeout: 10000
+      mail.smtp.timeout: 10000
+      mail.smtp.writetimeout: 10000
 
 # ---------- Propiedades propias de SICARES ----------
 sicares:
@@ -67,7 +72,12 @@ sicares:
     correo-habilitado: ${MAIL_ENABLED:false}
     remitente: ${MAIL_USER:no-reply@sicares.co}
     dias-anticipacion-recordatorio: 3
-    cron-recordatorios: "0 0 7 * * *"   # todos los días a las 7:00 a.m.
+    # Los recordatorios ya no esperan a las 7:00 a.m.: se revisan automáticamente cada minuto
+    # y se envían en cuanto llega su fecha programada (3 días antes de cada fecha importante).
+    intervalo-recordatorios-ms: ${RECORDATORIOS_INTERVALO_MS:60000}
+    # Obsoleto: lo usaba la versión anterior de ServicioNotificaciones (7:00 a.m.). Se deja para que main siga
+    # arrancando mientras se fusiona el paso 3 de la guía; después se puede borrar.
+    cron-recordatorios: "0 0 7 * * *"
   politica-datos:
     version: "1.0"
 

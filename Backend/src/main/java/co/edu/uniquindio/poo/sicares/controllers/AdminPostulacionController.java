@@ -2,6 +2,7 @@ package co.edu.uniquindio.poo.sicares.controllers;
 
 import co.edu.uniquindio.poo.sicares.dto.PostulacionDtos.*;
 import co.edu.uniquindio.poo.sicares.models.enums.EstadoPostulacion;
+import co.edu.uniquindio.poo.sicares.notifications.EnviadorCorreo;
 import co.edu.uniquindio.poo.sicares.notifications.ServicioNotificaciones;
 import co.edu.uniquindio.poo.sicares.security.UsuarioActual;
 import co.edu.uniquindio.poo.sicares.services.PostulacionService;
@@ -22,6 +23,7 @@ public class AdminPostulacionController {
 
     private final PostulacionService postulacionService;
     private final ServicioNotificaciones servicioNotificaciones;
+    private final EnviadorCorreo enviadorCorreo;
 
     @GetMapping("/postulaciones")
     public List<PostulacionResponse> listar(@RequestParam(required = false) EstadoPostulacion estado) {
@@ -53,5 +55,15 @@ public class AdminPostulacionController {
     @PostMapping("/recordatorios/procesar")
     public Map<String, Integer> procesarRecordatorios() {
         return Map.of("enviados", servicioNotificaciones.procesarRecordatoriosPendientes());
+    }
+
+    /**
+     * Diagnóstico del correo (HU-26): envía un correo de prueba y devuelve el error real si Gmail lo rechaza.
+     * Si no se indica destino, se envía al correo del administrador que lo pide.
+     */
+    @PostMapping("/correo/prueba")
+    public EnviadorCorreo.ResultadoPrueba probarCorreo(@RequestParam(required = false) String para) {
+        String destino = (para == null || para.isBlank()) ? UsuarioActual.get().correo() : para.trim();
+        return enviadorCorreo.probar(destino);
     }
 }
