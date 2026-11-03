@@ -4,6 +4,7 @@ import co.edu.uniquindio.poo.sicares.dto.OfertaDtos.*;
 import co.edu.uniquindio.poo.sicares.dto.OfertaMapper;
 import co.edu.uniquindio.poo.sicares.exceptions.RecursoNoEncontradoException;
 import co.edu.uniquindio.poo.sicares.exceptions.ReglaNegocioException;
+import co.edu.uniquindio.poo.sicares.models.enums.Departamento;
 import co.edu.uniquindio.poo.sicares.models.entities.Institucion;
 import co.edu.uniquindio.poo.sicares.models.entities.ProgramaEducativo;
 import co.edu.uniquindio.poo.sicares.models.enums.Modalidad;
@@ -91,7 +92,10 @@ public class ProgramaService {
         p.setAreaConocimiento(req.areaConocimiento());
         p.setDuracionPeriodos(req.duracionPeriodos());
         p.setCostoPeriodo(req.costoPeriodo());
-        p.setMunicipio(req.municipio().trim());
+        // Nombre oficial del municipio (enum Departamento): así coincide con el del beneficiario en el motor de reglas
+        p.setMunicipio(Departamento.buscarMunicipioEnCualquiera(req.municipio())
+                .orElseThrow(() -> new ReglaNegocioException("El municipio \"" + req.municipio().trim()
+                        + "\" no existe; selecciónalo de la lista")));
         p.setActivo(req.activo());
         p.setRequisitos(requisitoService.buscarVarios(req.requisitoIds()));
     }

@@ -6,6 +6,7 @@ import co.edu.uniquindio.poo.sicares.dto.OfertaMapper;
 import co.edu.uniquindio.poo.sicares.exceptions.RecursoNoEncontradoException;
 import co.edu.uniquindio.poo.sicares.exceptions.ReglaNegocioException;
 import co.edu.uniquindio.poo.sicares.models.entities.Institucion;
+import co.edu.uniquindio.poo.sicares.models.enums.Departamento;
 import co.edu.uniquindio.poo.sicares.repository.InstitucionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
@@ -70,8 +71,13 @@ public class InstitucionService {
         i.setNombre(dto.nombre().trim());
         i.setNit(dto.nit().trim());
         i.setTipo(dto.tipo());
-        i.setDepartamento(dto.departamento().trim());
-        i.setMunicipio(dto.municipio().trim());
+        // El municipio debe pertenecer al departamento (enum Departamento); se guardan los nombres oficiales
+        Departamento d = Departamento.buscar(dto.departamento())
+                .orElseThrow(() -> new ReglaNegocioException("Selecciona un departamento de la lista"));
+        i.setDepartamento(d.getNombre());
+        i.setMunicipio(d.buscarMunicipio(dto.municipio())
+                .orElseThrow(() -> new ReglaNegocioException("El municipio \"" + dto.municipio().trim()
+                        + "\" no pertenece al departamento de " + d.getNombre())));
         i.setCorreoContacto(dto.correoContacto());
     }
 }
