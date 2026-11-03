@@ -301,4 +301,65 @@ class RutaEducativaServiceTest {
 
         assertEquals(EstadoRuta.VIGENTE, service.consultarActual(ID).orElseThrow().estado());
     }
+
+    // ------------------------------------------------------------------ Ruta automática (al cambiar el perfil)
+
+    @Test
+    @DisplayName("Ruta automática: con el perfil incompleto no corre el motor ni lanza error")
+    void automaticaPerfilIncompleto() {
+        when(beneficiarioRepository.findById(ID)).thenReturn(Optional.of(beneficiario)); // perfil 0 %
+
+        assertTrue(service.regenerarAutomaticamente(ID).isEmpty());
+        verifyNoInteractions(motorReglas);
+        verify(rutaRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Ruta automática: con el perfil completo genera la versión nueva y avisa si cambiaron las oportunidades")
+    void automaticaPerfilCompleto() {
+        beneficiario.getPerfil().setCompleto(true);
+        RutaEducativa anterior = rutaDelMotor(70);           // oportunidad 1
+        anterior.setVersion(1);
+        anterior.setEstado(EstadoRuta.DESACTUALIZADA);
+        when(beneficiarioRepository.findById(ID)).thenReturn(Optional.of(beneficiario));
+        when(rutaRepository.findFirstByBeneficiarioIdOrderByVersionDesc(ID)).thenReturn(Optional.of(anterior));
+        when(motorReglas.generarRuta(beneficiario.getPerfil())).thenReturn(rutaDelMotor(90, 80)); // oportunidades 1 y 2
+        guardarDevuelveLaMisma();
+
+        RutaEducativaService.Regeneracion r = service.regenerarAutomaticamente(ID).orElseThrow();
+
+        assertEquals(2, r.ruta().version());
+        assertEquals(EstadoRuta.VIGENTE, r.ruta().estado());
+        assertTrue(r.cambiaronLasRecomendaciones());
+    }
+
+    @Test
+    @DisplayName("Ruta automática: sin oferta compatible no lanza error (la ruta anterior queda desactualizada)")
+    void automaticaSinOferta() {
+        beneficiario.getPerfil().setCompleto(true);
+        when(beneficiarioRepository.findById(ID)).thenReturn(Optional.of(beneficiario));
+        when(rutaRepository.findFirstByBeneficiarioIdOrderByVersionDesc(ID)).thenReturn(Optional.empty());
+        when(motorReglas.generarRuta(beneficiario.getPerfil())).thenReturn(new RutaEducativa());
+
+        assertTrue(service.regenerarAutomaticamente(ID).isEmpty());
+        verify(rutaRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("HU-19: al consultar una ruta desactualizada con el perfil completo se entrega la versión nueva")
+    void consultarDesactualizadaRegenera() {
+        beneficiario.getPerfil().setCompleto(true);
+        RutaEducativa vieja = rutaDelMotor(60);
+        vieja.setVersion(1);
+        vieja.setEstado(EstadoRuta.DESACTUALIZADA);
+        when(rutaRepository.findFirstByBeneficiarioIdOrderByVersionDesc(ID)).thenReturn(Optional.of(vieja));
+        when(beneficiarioRepository.findById(ID)).thenReturn(Optional.of(beneficiario));
+        when(motorReglas.generarRuta(beneficiario.getPerfil())).thenReturn(rutaDelMotor(85));
+        guardarDevuelveLaMisma();
+
+        RutaResponse r = service.consultarActual(ID).orElseThrow();
+
+        assertEquals(2, r.version());
+        assertEquals(EstadoRuta.VIGENTE, r.estado());
+    }
 }

@@ -9,6 +9,7 @@ import co.edu.uniquindio.poo.sicares.models.entities.InformacionPersonal;
 import co.edu.uniquindio.poo.sicares.models.entities.ResponsableMenor;
 import co.edu.uniquindio.poo.sicares.models.entities.RutaEducativa;
 import co.edu.uniquindio.poo.sicares.models.enums.*;
+import co.edu.uniquindio.poo.sicares.notifications.PerfilActualizadoEvent;
 import co.edu.uniquindio.poo.sicares.repository.BeneficiarioRepository;
 import co.edu.uniquindio.poo.sicares.repository.RutaEducativaRepository;
 import co.edu.uniquindio.poo.sicares.services.CaracterizacionService;
@@ -19,9 +20,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
@@ -46,6 +49,8 @@ class CaracterizacionServiceTest {
     private BeneficiarioRepository beneficiarioRepository;
     @Mock
     private RutaEducativaRepository rutaRepository;
+    @Mock
+    private ApplicationEventPublisher eventos;
 
     @InjectMocks
     private CaracterizacionService service;
@@ -501,6 +506,93 @@ class CaracterizacionServiceTest {
 
             assertTrue(r.completo());
             assertNotNull(beneficiario.getPerfil().getFechaCompletado(), "KPI: se guarda cuándo quedó completo");
+        }
+    }
+
+    //  Correcciones: departamento/municipio, número de documento y ruta automática
+
+    @Nested
+    @DisplayName("Ubicación, documento y aviso de perfil actualizado")
+    class CorreccionesTest {
+
+        private InformacionPersonalDto conUbicacion(String departamento, String municipio) {
+            return new InformacionPersonalDto("Usuario", "Prueba", TipoDocumento.CC, "1094000000", nacidoHace(25),
+                    "", "", "3001234567", departamento, municipio, Zona.URBANA, null, null);
+        }
+
+        private InformacionPersonalDto conDocumento(TipoDocumento tipo, int edad, String numero) {
+            return new InformacionPersonalDto("Usuario", "Prueba", tipo, numero, nacidoHace(edad),
+                    "", "", "3001234567", "Quindío", "Armenia", Zona.URBANA, null,
+                    edad < 18 ? responsableValido() : null);
+        }
+
+        @Test
+        @DisplayName("Guarda el departamento y el municipio con el nombre oficial (con tildes)")
+        void normalizaUbicacion() {
+            existeBeneficiario();
+
+            PerfilResponse r = service.guardarInformacionPersonal(ID, conUbicacion("quindio", "calarca"));
+
+            assertEquals("Quindío", r.informacionPersonal().departamento());
+            assertEquals("Calarcá", r.informacionPersonal().municipio());
+        }
+
+        @Test
+        @DisplayName("Rechaza un municipio que no pertenece al departamento")
+        void municipioDeOtroDepartamento() {
+            ReglaNegocioException ex = assertThrows(ReglaNegocioException.class,
+                    () -> service.guardarInformacionPersonal(ID, conUbicacion("Quindío", "Pereira")));
+
+            assertTrue(ex.getMessage().contains("no pertenece al departamento de Quindío"));
+            verify(beneficiarioRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("Rechaza un departamento que no existe")
+        void departamentoInexistente() {
+            assertThrows(ReglaNegocioException.class,
+                    () -> service.guardarInformacionPersonal(ID, conUbicacion("Narnia", "Armenia")));
+        }
+
+        @Test
+        @DisplayName("Cédula con 11 dígitos: explica que la cédula tiene máximo 10")
+        void cedulaMuyLarga() {
+            ReglaNegocioException ex = assertThrows(ReglaNegocioException.class,
+                    () -> service.guardarInformacionPersonal(ID, conDocumento(TipoDocumento.CC, 25, "10940000001")));
+
+            assertTrue(ex.getMessage().contains("entre 6 y 10 dígitos"));
+        }
+
+        @Test
+        @DisplayName("Documento con letras: explica que solo se admiten números")
+        void documentoConLetras() {
+            ReglaNegocioException ex = assertThrows(ReglaNegocioException.class,
+                    () -> service.guardarInformacionPersonal(ID, conDocumento(TipoDocumento.CC, 25, "10940A")));
+
+            assertTrue(ex.getMessage().contains("solo puede tener números"));
+        }
+
+        @Test
+        @DisplayName("Tarjeta de identidad de 11 dígitos es válida")
+        void tarjetaIdentidadOnceDigitos() {
+            existeBeneficiario();
+
+            assertDoesNotThrow(() -> service.guardarInformacionPersonal(ID,
+                    conDocumento(TipoDocumento.TI, 15, "10940000001")));
+        }
+
+        @Test
+        @DisplayName("Cada cambio publica el evento para actualizar la ruta automáticamente")
+        void publicaEventoDePerfil() {
+            existeBeneficiario();
+
+            service.guardarInformacionPersonal(ID, adulto(25));
+
+            ArgumentCaptor<PerfilActualizadoEvent> evento = ArgumentCaptor.forClass(PerfilActualizadoEvent.class);
+            verify(eventos).publishEvent(evento.capture());
+            assertEquals(ID, evento.getValue().beneficiarioId());
+            assertFalse(evento.getValue().perfilCompleto(), "Con 1 de 6 secciones el perfil no está completo");
+            assertFalse(evento.getValue().completadoAhora());
         }
     }
 }

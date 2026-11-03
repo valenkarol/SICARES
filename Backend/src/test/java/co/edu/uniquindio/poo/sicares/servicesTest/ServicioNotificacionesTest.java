@@ -3,6 +3,7 @@ package co.edu.uniquindio.poo.sicares.servicesTest;
 import co.edu.uniquindio.poo.sicares.models.entities.*;
 import co.edu.uniquindio.poo.sicares.models.enums.CanalNotificacion;
 import co.edu.uniquindio.poo.sicares.models.enums.EstadoPostulacion;
+import co.edu.uniquindio.poo.sicares.notifications.EnviadorCorreo;
 import co.edu.uniquindio.poo.sicares.notifications.ServicioNotificaciones;
 import co.edu.uniquindio.poo.sicares.repository.NotificacionRepository;
 import co.edu.uniquindio.poo.sicares.repository.RecordatorioRepository;
@@ -12,12 +13,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.mail.javamail.JavaMailSender;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -35,18 +33,14 @@ class ServicioNotificacionesTest {
 
     @Mock private NotificacionRepository notificacionRepository;
     @Mock private RecordatorioRepository recordatorioRepository;
-    @Mock private ObjectProvider<JavaMailSender> mailSender;
+    @Mock private EnviadorCorreo enviadorCorreo;
 
     private ServicioNotificaciones servicio;
 
     @BeforeEach
     void setUp() {
-        servicio = crearServicio(false);
-    }
-
-    private ServicioNotificaciones crearServicio(boolean correoHabilitado) {
-        return new ServicioNotificaciones(notificacionRepository, recordatorioRepository, mailSender,
-                correoHabilitado, "no-reply@sicares.co", DIAS_ANTICIPACION);
+        servicio = new ServicioNotificaciones(notificacionRepository, recordatorioRepository, enviadorCorreo,
+                DIAS_ANTICIPACION);
     }
 
     private static Postulacion postulacion(LocalDate cierre, LocalDate admision, LocalDate matricula,
@@ -84,7 +78,7 @@ class ServicioNotificacionesTest {
     // ------------------------------------------------------------------ programarRecordatorios
 
     @Test
-    @DisplayName("HU-26: programa 3 recordatorios (cierre, admisión y matrícula) N días antes a las 7:00")
+    @DisplayName("HU-26: programa 3 recordatorios (cierre, admisión y matrícula) N días antes, sin esperar a las 7:00")
     void programaTresRecordatorios() {
         LocalDate cierre = LocalDate.now().plusDays(20);
         Postulacion p = postulacion(cierre, cierre.plusDays(15), cierre.plusDays(30), EstadoPostulacion.SELECCIONADA);
@@ -94,8 +88,20 @@ class ServicioNotificacionesTest {
         assertEquals(3, p.getRecordatorios().size());
         Recordatorio primero = p.getRecordatorios().get(0);
         assertEquals("Cierre de inscripciones", primero.getTitulo());
-        assertEquals(cierre.minusDays(DIAS_ANTICIPACION).atTime(LocalTime.of(7, 0)), primero.getFechaProgramada());
+        assertEquals(cierre.minusDays(DIAS_ANTICIPACION), primero.getFechaProgramada().toLocalDate());
         assertFalse(primero.isEnviado());
+    }
+
+    @Test
+    @DisplayName("HU-26: si el evento está a menos de N días, el recordatorio queda para enviarse de inmediato")
+    void eventoCercanoSeProgramaYa() {
+        LocalDate cierre = LocalDate.now().plusDays(1);
+        Postulacion p = postulacion(cierre, null, null, EstadoPostulacion.SELECCIONADA);
+
+        servicio.programarRecordatorios(p);
+
+        LocalDateTime programada = p.getRecordatorios().get(0).getFechaProgramada();
+        assertFalse(programada.isAfter(LocalDateTime.now()), "No debe esperar a otro día ni a las 7:00");
     }
 
     @Test
@@ -132,18 +138,18 @@ class ServicioNotificacionesTest {
     // ------------------------------------------------------------------ enviar
 
     @Test
-    @DisplayName("ADR-06: si el correo está habilitado pero no hay servidor de correo, la notificación igual se guarda")
-    void correoSinServidorNoRompe() {
-        ServicioNotificaciones conCorreo = crearServicio(true);
-        when(mailSender.getIfAvailable()).thenReturn(null);
+    @DisplayName("HU-26: cada notificación se guarda en la app y se entrega al enviador de correo")
+    void notificarGuardaYEnviaCorreo() {
         when(notificacionRepository.save(any(Notificacion.class))).thenAnswer(inv -> inv.getArgument(0));
         Beneficiario b = new Beneficiario();
         b.setCorreo("ana@correo.com");
 
-        Notificacion n = conCorreo.notificar(b, null, "Asunto", "Mensaje");
+        Notificacion n = servicio.notificar(b, null, "Asunto", "Mensaje");
 
         assertNotNull(n.getFechaEnvio());
         assertEquals(CanalNotificacion.CORREO, n.getCanal());
         verify(notificacionRepository).save(n);
+        verify(enviadorCorreo).enviar("ana@correo.com", "Asunto", "Mensaje");
     }
+
 }

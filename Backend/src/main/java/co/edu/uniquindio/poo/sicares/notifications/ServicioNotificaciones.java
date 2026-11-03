@@ -6,10 +6,7 @@ import co.edu.uniquindio.poo.sicares.models.enums.EstadoPostulacion;
 import co.edu.uniquindio.poo.sicares.repository.NotificacionRepository;
 import co.edu.uniquindio.poo.sicares.repository.RecordatorioRepository;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,11 +15,13 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 /**
  * <<service>> ServicioNotificaciones (HU-26, ADR-06: mecanismo centralizado de notificaciones).
- * Guarda cada notificación en BD (se ve en la app) y, si está habilitado, la envía por correo.
+ * Guarda cada notificación en BD (se ve en la app) y, si está habilitado, la envía por correo
+ * (el envío real lo hace {@link EnviadorCorreo}, en segundo plano y después de confirmar la transacción).
  */
 @Slf4j
 @Service
@@ -32,22 +31,16 @@ public class ServicioNotificaciones {
 
     private final NotificacionRepository notificacionRepository;
     private final RecordatorioRepository recordatorioRepository;
-    private final ObjectProvider<JavaMailSender> mailSender;
-    private final boolean correoHabilitado;
-    private final String remitente;
+    private final EnviadorCorreo enviadorCorreo;
     private final int diasAnticipacion;
 
     public ServicioNotificaciones(NotificacionRepository notificacionRepository,
                                   RecordatorioRepository recordatorioRepository,
-                                  ObjectProvider<JavaMailSender> mailSender,
-                                  @Value("${sicares.notificaciones.correo-habilitado}") boolean correoHabilitado,
-                                  @Value("${sicares.notificaciones.remitente}") String remitente,
+                                  EnviadorCorreo enviadorCorreo,
                                   @Value("${sicares.notificaciones.dias-anticipacion-recordatorio}") int diasAnticipacion) {
         this.notificacionRepository = notificacionRepository;
         this.recordatorioRepository = recordatorioRepository;
-        this.mailSender = mailSender;
-        this.correoHabilitado = correoHabilitado;
-        this.remitente = remitente;
+        this.enviadorCorreo = enviadorCorreo;
         this.diasAnticipacion = diasAnticipacion;
     }
 
@@ -56,8 +49,8 @@ public class ServicioNotificaciones {
     public Notificacion enviar(Notificacion n) {
         n.setFechaEnvio(LocalDateTime.now());
         Notificacion guardada = notificacionRepository.save(n);
-        if (n.getCanal() == CanalNotificacion.CORREO && correoHabilitado) {
-            enviarCorreo(n.getUsuario().getCorreo(), n.getAsunto(), n.getMensaje());
+        if (n.getCanal() == CanalNotificacion.CORREO) {
+            enviadorCorreo.enviar(n.getUsuario().getCorreo(), n.getAsunto(), n.getMensaje());
         }
         return guardada;
     }
@@ -76,7 +69,8 @@ public class ServicioNotificaciones {
 
     /**
      * programarRecordatorios(p): crea recordatorios N días antes de cada fecha importante
-     * de la oportunidad (cierre de inscripción, admisión y matrícula).
+     * de la oportunidad (cierre de inscripción, admisión y matrícula), a la misma hora en que se seleccionó.
+     * Si esa fecha ya pasó (el evento está a menos de N días), queda para enviarse de inmediato.
      */
     public void programarRecordatorios(Postulacion p) {
         OportunidadEducativa o = p.getOportunidad();
@@ -91,9 +85,10 @@ public class ServicioNotificaciones {
 
     private void crearRecordatorio(Postulacion p, LocalDate fechaEvento, String titulo, String plantilla) {
         if (fechaEvento == null || fechaEvento.isBefore(LocalDate.now())) return;
-        LocalDateTime programada = fechaEvento.minusDays(diasAnticipacion).atTime(LocalTime.of(7, 0));
-        if (programada.isBefore(LocalDateTime.now())) {
-            programada = LocalDateTime.now();
+        LocalDateTime ahora = LocalDateTime.now().truncatedTo(ChronoUnit.MINUTES);
+        LocalDateTime programada = fechaEvento.minusDays(diasAnticipacion).atTime(LocalTime.from(ahora));
+        if (programada.isBefore(ahora)) {
+            programada = ahora;
         }
         Recordatorio r = new Recordatorio();
         r.setTitulo(titulo);
@@ -105,10 +100,12 @@ public class ServicioNotificaciones {
     }
 
     /**
-     * procesarRecordatoriosPendientes(): se ejecuta automáticamente según el cron configurado
-     * (por defecto todos los días a las 7:00 a.m.). El admin también puede dispararlo manualmente.
+     * procesarRecordatoriosPendientes(): se ejecuta automáticamente cada minuto (configurable con
+     * sicares.notificaciones.intervalo-recordatorios-ms), así cada recordatorio sale en cuanto llega su hora y no
+     * solo a las 7:00 a.m. El admin también puede dispararlo manualmente.
      */
-    @Scheduled(cron = "${sicares.notificaciones.cron-recordatorios}")
+    @Scheduled(fixedDelayString = "${sicares.notificaciones.intervalo-recordatorios-ms:60000}",
+            initialDelayString = "${sicares.notificaciones.intervalo-recordatorios-ms:60000}")
     @Transactional
     public void tareaProgramadaRecordatorios() {
         procesarRecordatoriosPendientes();
@@ -132,24 +129,5 @@ public class ServicioNotificaciones {
         }
         if (enviados > 0) log.info("Recordatorios enviados: {}", enviados);
         return enviados;
-    }
-
-    private void enviarCorreo(String para, String asunto, String cuerpo) {
-        JavaMailSender sender = mailSender.getIfAvailable();
-        if (sender == null) {
-            log.warn("Correo habilitado pero no hay JavaMailSender configurado");
-            return;
-        }
-        try {
-            SimpleMailMessage msg = new SimpleMailMessage();
-            msg.setFrom(remitente);
-            msg.setTo(para);
-            msg.setSubject("[SICARES] " + asunto);
-            msg.setText(cuerpo + "\n\n— SICARES, Sistema de Caracterización y Seguimiento Educativo");
-            sender.send(msg);
-        } catch (Exception e) {
-            // ADR-06: un fallo de correo no debe romper el proceso; la notificación queda en la app
-            log.error("No se pudo enviar el correo a {}: {}", para, e.getMessage());
-        }
     }
 }

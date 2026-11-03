@@ -4,12 +4,15 @@ import co.edu.uniquindio.poo.sicares.dto.CaracterizacionMapper;
 import co.edu.uniquindio.poo.sicares.exceptions.RecursoNoEncontradoException;
 import co.edu.uniquindio.poo.sicares.exceptions.ReglaNegocioException;
 import co.edu.uniquindio.poo.sicares.models.entities.*;
+import co.edu.uniquindio.poo.sicares.models.enums.Departamento;
 import co.edu.uniquindio.poo.sicares.models.enums.EstadoRuta;
 import co.edu.uniquindio.poo.sicares.models.enums.TipoDocumento;
+import co.edu.uniquindio.poo.sicares.notifications.PerfilActualizadoEvent;
 import co.edu.uniquindio.poo.sicares.repository.BeneficiarioRepository;
 import co.edu.uniquindio.poo.sicares.repository.RutaEducativaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +31,8 @@ public class CaracterizacionService {
 
     private final BeneficiarioRepository beneficiarioRepository;
     private final RutaEducativaRepository rutaRepository;
+    /** Avisa que el perfil cambió para que la ruta se regenere sola (RegeneradorRutas). */
+    private final ApplicationEventPublisher eventos;
 
     @Value("${sicares.politica-datos.version}")
     private String versionPolitica;
@@ -64,10 +69,15 @@ public class CaracterizacionService {
 
     // ---------------------------------------------------------------- secciones (HU-04 a HU-09, HU-11)
 
-    /** HU-04: valida edad (12 a 59) y coherencia del tipo de documento. */
+    /** HU-04: valida edad (12 a 59), coherencia del tipo de documento y que el municipio sea del departamento. */
     @Transactional
     public CaracterizacionDtos.PerfilResponse guardarInformacionPersonal(Long beneficiarioId, CaracterizacionDtos.InformacionPersonalDto dto) {
         validarEdadYDocumento(dto);
+        Departamento departamento = Departamento.buscar(dto.departamento())
+                .orElseThrow(() -> new ReglaNegocioException("Selecciona un departamento de la lista"));
+        String municipio = departamento.buscarMunicipio(dto.municipio())
+                .orElseThrow(() -> new ReglaNegocioException("El municipio \"" + dto.municipio().trim()
+                        + "\" no pertenece al departamento de " + departamento.getNombre()));
         // RNF-13: una misma persona no puede tener dos caracterizaciones (dos cuentas con el mismo documento)
         if (beneficiarioRepository.existsByPerfilInformacionPersonalNumeroDocumentoAndIdNot(
                 dto.numeroDocumento(), beneficiarioId)) {
@@ -87,8 +97,8 @@ public class CaracterizacionService {
         info.setGenero(dto.genero());
         info.setEtnia(dto.etnia());
         info.setTelefono(dto.telefono());
-        info.setDepartamento(dto.departamento().trim());
-        info.setMunicipio(dto.municipio().trim());
+        info.setDepartamento(departamento.getNombre());   // nombre oficial, con tildes
+        info.setMunicipio(municipio);
         info.setZona(dto.zona());
         info.setResponsable(info.esMenorDeEdad() ? crearResponsable(dto.responsable()) : null);
         perfil.setInformacionPersonal(info);
@@ -221,9 +231,13 @@ public class CaracterizacionService {
         if (!inconsistencias.isEmpty()) {
             throw new ReglaNegocioException(String.join(". ", inconsistencias));
         }
+        boolean estabaCompleto = b.getPerfil().isCompleto();
         b.getPerfil().actualizar();          // recalcula porcentaje y completitud
         marcarRutasDesactualizadas(b.getId()); // HU-11/HU-27: el perfil cambió, las rutas anteriores ya no aplican
         beneficiarioRepository.save(b);
+        boolean completo = b.getPerfil().isCompleto();
+        // Se procesa después del commit: si el perfil está al 100 % se genera la ruta nueva automáticamente
+        eventos.publishEvent(new PerfilActualizadoEvent(b.getId(), completo, completo && !estabaCompleto));
         return CaracterizacionMapper.toPerfil(b);
     }
 
@@ -246,6 +260,7 @@ public class CaracterizacionService {
         if (edad >= 18 && dto.tipoDocumento() == TipoDocumento.TI) {
             throw new ReglaNegocioException("Los mayores de edad deben registrarse con Cédula de Ciudadanía (CC)");
         }
+        validarNumeroDocumento(dto.tipoDocumento(), dto.numeroDocumento(), "El número de documento");
         if (edad < ResponsableMenor.MAYORIA_EDAD) {
             validarResponsable(dto);
         }
@@ -265,8 +280,24 @@ public class CaracterizacionService {
         if (r.tipoDocumento() != TipoDocumento.CC) {
             throw new ReglaNegocioException("El responsable debe identificarse con Cédula de Ciudadanía (CC)");
         }
+        validarNumeroDocumento(TipoDocumento.CC, r.numeroDocumento(), "La cédula del responsable");
         if (r.numeroDocumento().equals(dto.numeroDocumento())) {
             throw new ReglaNegocioException("El documento del responsable no puede ser el mismo del beneficiario");
+        }
+    }
+
+    /** Cédula: 6 a 10 dígitos. Tarjeta de identidad (NUIP): 10 u 11 dígitos. Solo números. */
+    static void validarNumeroDocumento(TipoDocumento tipo, String numero, String campo) {
+        String n = numero == null ? "" : numero.trim();
+        if (!n.matches("\\d+")) {
+            throw new ReglaNegocioException(campo + " solo puede tener números (sin puntos, espacios ni letras)");
+        }
+        if (tipo == TipoDocumento.CC && (n.length() < 6 || n.length() > 10)) {
+            throw new ReglaNegocioException(campo + " (cédula) debe tener entre 6 y 10 dígitos; escribiste " + n.length());
+        }
+        if (tipo == TipoDocumento.TI && (n.length() < 10 || n.length() > 11)) {
+            throw new ReglaNegocioException(campo + " (tarjeta de identidad) debe tener 10 u 11 dígitos; escribiste "
+                    + n.length());
         }
     }
 

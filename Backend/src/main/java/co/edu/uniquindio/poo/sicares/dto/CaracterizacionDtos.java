@@ -21,13 +21,18 @@ public final class CaracterizacionDtos {
             @NotBlank(message = "Los nombres son obligatorios") @Size(max = 80) String nombres,
             @NotBlank(message = "Los apellidos son obligatorios") @Size(max = 80) String apellidos,
             @NotNull(message = "El tipo de documento es obligatorio") TipoDocumento tipoDocumento,
-            @NotBlank @Pattern(regexp = "\\d{6,12}", message = "El documento debe tener entre 6 y 12 dígitos")
+            @NotBlank(message = "El número de documento es obligatorio")
+            @Pattern(regexp = "\\d{6,11}", message = "El número de documento solo admite números: cédula de 6 a 10 dígitos "
+                    + "o tarjeta de identidad de 10 u 11")
             String numeroDocumento,
             @NotNull(message = "La fecha de nacimiento es obligatoria") @Past LocalDate fechaNacimiento,
             @Size(max = 30) String genero,
             @Size(max = 50) String etnia,
-            @Pattern(regexp = "^$|\\d{7,10}", message = "Teléfono inválido") String telefono,
+            @Pattern(regexp = "^$|\\d{7,10}", message = "El teléfono solo admite números, entre 7 y 10 dígitos")
+            String telefono,
+            // Nombre del departamento (enum Departamento); se valida que exista
             @NotBlank(message = "El departamento es obligatorio") String departamento,
+            // Debe ser un municipio de ese departamento
             @NotBlank(message = "El municipio es obligatorio") String municipio,
             @NotNull(message = "La zona es obligatoria") Zona zona,
             Integer edad,
@@ -40,12 +45,14 @@ public final class CaracterizacionDtos {
             @NotBlank(message = "Los nombres del responsable son obligatorios") @Size(max = 80) String nombres,
             @NotBlank(message = "Los apellidos del responsable son obligatorios") @Size(max = 80) String apellidos,
             @NotNull(message = "El tipo de documento del responsable es obligatorio") TipoDocumento tipoDocumento,
-            @NotBlank @Pattern(regexp = "\\d{6,12}", message = "El documento del responsable debe tener entre 6 y 12 dígitos")
+            @NotBlank(message = "La cédula del responsable es obligatoria")
+            @Pattern(regexp = "\\d{6,10}", message = "La cédula del responsable solo admite números, entre 6 y 10 dígitos")
             String numeroDocumento,
             @NotNull(message = "La fecha de nacimiento del responsable es obligatoria") @Past LocalDate fechaNacimiento,
             @NotBlank(message = "El parentesco es obligatorio") @Size(max = 40) String parentesco,
             @NotBlank(message = "El teléfono del responsable es obligatorio")
-            @Pattern(regexp = "\\d{7,10}", message = "Teléfono del responsable inválido") String telefono,
+            @Pattern(regexp = "\\d{7,10}", message = "El teléfono del responsable solo admite números, entre 7 y 10 dígitos")
+            String telefono,
             @Email(message = "Correo del responsable inválido") @Size(max = 120) String correo
     ) {
     }
@@ -107,9 +114,10 @@ public final class CaracterizacionDtos {
     ) {
     }
 
-    /** HU-08 */
+    /** HU-08: de 1 a 5 áreas. */
     public record InteresesRequest(
-            @NotEmpty(message = "Selecciona al menos un interés") @Valid List<InteresProfesionalDto> intereses
+            @NotEmpty(message = "Selecciona al menos un interés")
+            @Size(max = 5, message = "Selecciona máximo 5 áreas de interés") @Valid List<InteresProfesionalDto> intereses
     ) {
     }
 

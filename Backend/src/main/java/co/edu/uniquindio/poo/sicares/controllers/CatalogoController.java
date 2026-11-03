@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +34,10 @@ public class CatalogoController {
         c.put("tiposRequisito", List.of(TipoRequisito.values()));
         c.put("estadosPostulacion", List.of(EstadoPostulacion.values()));
         c.put("estadosDocumento", List.of(EstadoDocumento.values()));
+        // Departamento 1 ── 1..* municipios: el frontend llena el select de municipios según el departamento elegido
+        c.put("departamentos", Arrays.stream(Departamento.values())
+                .map(d -> Map.of("codigo", d.name(), "nombre", d.getNombre(), "municipios", d.getMunicipios()))
+                .toList());
         return c;
     }
 }
