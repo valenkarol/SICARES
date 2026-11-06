@@ -32,6 +32,8 @@ export interface SituacionVictima {
   inscritoRUV: boolean;
   hechoVictimizante?: string;
   fechaHecho?: string;
+  /** Departamento del municipio expulsor (catálogo departamentos). */
+  departamentoExpulsor?: string;
   municipioExpulsor?: string;
 }
 
@@ -116,3 +118,4 @@ export interface DepartamentoCatalogo {
   nombre: string;   // nombre oficial, ej. Quindío (es lo que se guarda)
   municipios: string[];
 }
+

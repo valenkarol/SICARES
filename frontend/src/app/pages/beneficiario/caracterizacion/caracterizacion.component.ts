@@ -213,8 +213,19 @@ type Seccion = 'personal' | 'victima' | 'socio' | 'trayectoria' | 'intereses' | 
                   </select></div>
                 <div class="campo"><label>Fecha del hecho</label>
                   <input type="date" name="fechaHecho" [(ngModel)]="victima.fechaHecho" /></div>
-                <div class="campo"><label>Municipio expulsor</label>
-                  <input name="municipioExpulsor" [(ngModel)]="victima.municipioExpulsor" /></div>
+                <!-- Departamento 1 ── 1..* municipios, igual que en la información personal -->
+                <div class="campo"><label for="departamentoExpulsor">Departamento expulsor</label>
+                  <select id="departamentoExpulsor" name="departamentoExpulsor" [(ngModel)]="victima.departamentoExpulsor"
+                          (ngModelChange)="cambiarDepartamentoExpulsor()">
+                    <option value="">Sin especificar</option>
+                    @for (d of catalogos?.departamentos ?? []; track d.codigo) { <option [value]="d.nombre">{{ d.nombre }}</option> }
+                  </select></div>
+                <div class="campo"><label for="municipioExpulsor">Municipio expulsor</label>
+                  <select id="municipioExpulsor" name="municipioExpulsor" [(ngModel)]="victima.municipioExpulsor"
+                          [disabled]="!municipiosExpulsor.length">
+                    <option value="">{{ municipiosExpulsor.length ? 'Selecciona el municipio' : 'Primero elige el departamento' }}</option>
+                    @for (m of municipiosExpulsor; track m) { <option [value]="m">{{ m }}</option> }
+                  </select></div>
               </div>
             }
             <p class="suave">Esta información está protegida por la Ley 1448 de 2011.</p>
@@ -591,6 +602,15 @@ export class CaracterizacionComponent implements OnInit {
 
   // ---------------------------------------------------------------- Departamento → Municipio
 
+  /** Municipios del departamento expulsor (HU-05). */
+  get municipiosExpulsor(): string[] {
+    return municipiosDe(this.catalogos?.departamentos, this.victima.departamentoExpulsor);
+  }
+
+  cambiarDepartamentoExpulsor(): void {
+    this.victima.municipioExpulsor = municipioOficial(this.municipiosExpulsor, this.victima.municipioExpulsor);
+  }
+
   get municipios(): string[] {
     return municipiosDe(this.catalogos?.departamentos, this.personal.departamento);
   }
@@ -607,6 +627,13 @@ export class CaracterizacionComponent implements OnInit {
     const d = buscarDepartamento(deps, this.personal.departamento);
     this.personal.departamento = d?.nombre ?? '';
     this.personal.municipio = d ? municipioOficial(d.municipios, this.personal.municipio) : '';
+
+    // Situación de víctima: los registros viejos solo tienen el municipio escrito a mano; se busca su departamento
+    const v = this.victima;
+    const dv = buscarDepartamento(deps, v.departamentoExpulsor)
+      ?? (v.municipioExpulsor ? deps.find((x) => municipioOficial(x.municipios, v.municipioExpulsor)) : undefined);
+    v.departamentoExpulsor = dv?.nombre ?? '';
+    v.municipioExpulsor = dv ? municipioOficial(dv.municipios, v.municipioExpulsor) : '';
   }
 
   // ---------------------------------------------------------------- Responsable de menores (HU-04)
@@ -693,6 +720,8 @@ export class CaracterizacionComponent implements OnInit {
     const datos: SituacionVictima = {
       ...this.victima,
       inscritoRUV: this.victima.esVictima && this.victima.inscritoRUV,
+      departamentoExpulsor: this.victima.departamentoExpulsor || undefined,
+      municipioExpulsor: this.victima.municipioExpulsor || undefined,
     };
     this.guardar(this.perfilService.guardarSituacionVictima(datos));
   }
@@ -701,6 +730,9 @@ export class CaracterizacionComponent implements OnInit {
     const e: string[] = [];
     const v = this.victima;
     if (v.esVictima && !v.hechoVictimizante) e.push('Selecciona el hecho victimizante');
+    if (v.esVictima && v.municipioExpulsor && !v.departamentoExpulsor) {
+      e.push('Selecciona el departamento del municipio expulsor');
+    }
     const nacimiento = this.perfil?.informacionPersonal?.fechaNacimiento;
     if (v.esVictima && v.fechaHecho && nacimiento && v.fechaHecho < nacimiento) {
       e.push('La fecha del hecho victimizante no puede ser anterior a tu fecha de nacimiento');

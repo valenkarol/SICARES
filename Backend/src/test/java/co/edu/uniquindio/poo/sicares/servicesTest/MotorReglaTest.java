@@ -21,7 +21,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-/** Pruebas unitarias (caja blanca) del motor de reglas — patrón Strategy (HU-17). */
+/** Pruebas unitarias (caja blanca) del motor de reglas — patrón Strategy. */
 class MotorReglasTest {
 
     private PerfilEducativo perfil;
@@ -134,15 +134,56 @@ class MotorReglasTest {
     }
 
     @Test
-    @DisplayName("La ruta ordena primero el programa que coincide con los intereses")
-    void rutaOrdenada() {
+    @DisplayName("HU-17: la ruta solo incluye programas del área de interés del usuario")
+    void rutaFiltraPorInteres() {
         OportunidadEducativa salud = oportunidad(NivelEducativo.TECNOLOGICO, Modalidad.PRESENCIAL, "Salud", 0);
         OportunidadEducativa tec = oportunidad(NivelEducativo.TECNOLOGICO, Modalidad.PRESENCIAL, "Tecnología e informática", 0);
         RutaEducativa ruta = motor(salud, tec).generarRuta(perfil);
 
-        assertEquals(2, ruta.getRecomendaciones().size());
+        assertEquals(1, ruta.getRecomendaciones().size(), "Salud cumple el nivel pero no es un interés: no entra");
         assertSame(tec, ruta.getRecomendaciones().get(0).getOportunidad());
         assertEquals(1, ruta.getRecomendaciones().get(0).getOrden());
+    }
+
+    @Test
+    @DisplayName("HU-17: si ningún programa coincide con los intereses, la ruta queda vacía")
+    void sinCoincidenciaRutaVacia() {
+        perfil.getIntereses().clear();
+        perfil.getIntereses().add(new InteresProfesional("Artes y diseño", null));
+        OportunidadEducativa salud = oportunidad(NivelEducativo.TECNOLOGICO, Modalidad.PRESENCIAL, "Salud", 0);
+        OportunidadEducativa tec = oportunidad(NivelEducativo.TECNOLOGICO, Modalidad.PRESENCIAL, "Tecnología e informática", 0);
+
+        assertTrue(motor(salud, tec).generarRuta(perfil).getRecomendaciones().isEmpty());
+    }
+
+    @Test
+    @DisplayName("HU-17: al cambiar los intereses cambia la ruta")
+    void cambiarInteresCambiaRuta() {
+        OportunidadEducativa salud = oportunidad(NivelEducativo.TECNOLOGICO, Modalidad.PRESENCIAL, "Salud", 0);
+        OportunidadEducativa tec = oportunidad(NivelEducativo.TECNOLOGICO, Modalidad.PRESENCIAL, "Tecnología e informática", 0);
+        perfil.getIntereses().clear();
+        perfil.getIntereses().add(new InteresProfesional("Salud", null));
+
+        RutaEducativa ruta = motor(salud, tec).generarRuta(perfil);
+
+        assertEquals(1, ruta.getRecomendaciones().size());
+        assertSame(salud, ruta.getRecomendaciones().get(0).getOportunidad());
+    }
+
+    @Test
+    @DisplayName("ReglaIntereses es eliminatoria y no acepta coincidencias por texto vacío")
+    void reglaInteresesEliminatoria() {
+        ReglaIntereses regla = new ReglaIntereses();
+        OportunidadEducativa salud = oportunidad(NivelEducativo.TECNOLOGICO, Modalidad.PRESENCIAL, "Salud", 0);
+        OportunidadEducativa sinArea = oportunidad(NivelEducativo.TECNOLOGICO, Modalidad.PRESENCIAL, null, 0);
+        perfil.getIntereses().add(new InteresProfesional("", null));
+
+        assertTrue(regla.esEliminatoria());
+        assertFalse(regla.evaluar(perfil, salud).isCumple());
+        assertFalse(regla.evaluar(perfil, sinArea).isCumple());
+        assertTrue(regla.evaluar(perfil,
+                        oportunidad(NivelEducativo.TECNOLOGICO, Modalidad.PRESENCIAL, "tecnologia e informatica", 0)).isCumple(),
+                "Ignora tildes y mayúsculas");
     }
 
     @Test
@@ -161,3 +202,4 @@ class MotorReglasTest {
         assertFalse(new ReglaRequisitos().evaluar(perfil, op).isCumple());
     }
 }
+

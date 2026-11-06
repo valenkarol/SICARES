@@ -274,14 +274,14 @@ class CaracterizacionServiceTest {
         @DisplayName("HU-05: no puede estar inscrito en el RUV sin marcar que es víctima")
         void ruvSinSerVictima() {
             assertThrows(ReglaNegocioException.class, () -> service.guardarSituacionVictima(ID,
-                    new SituacionVictimaDto(false, true, null, null, null)));
+                    new SituacionVictimaDto(false, true, null, null, null, null)));
         }
 
         @Test
         @DisplayName("HU-05: si es víctima, el hecho victimizante es obligatorio")
         void victimaSinHecho() {
             assertThrows(ReglaNegocioException.class, () -> service.guardarSituacionVictima(ID,
-                    new SituacionVictimaDto(true, true, " ", null, null)));
+                    new SituacionVictimaDto(true, true, " ", null, null, null)));
         }
 
         @Test
@@ -290,7 +290,7 @@ class CaracterizacionServiceTest {
             existeBeneficiario();
 
             PerfilResponse r = service.guardarSituacionVictima(ID,
-                    new SituacionVictimaDto(false, false, "Desplazamiento forzado", LocalDate.of(2015, 1, 1), "Armenia"));
+                    new SituacionVictimaDto(false, false, "Desplazamiento forzado", LocalDate.of(2015, 1, 1), "Quindío", "Armenia"));
 
             assertNull(r.situacionVictima().hechoVictimizante());
             assertNull(r.situacionVictima().municipioExpulsor());
@@ -350,7 +350,7 @@ class CaracterizacionServiceTest {
 
             service.guardarInformacionPersonal(ID, adulto(25));
             service.guardarSituacionVictima(ID,
-                    new SituacionVictimaDto(true, true, "Desplazamiento forzado", LocalDate.of(2015, 1, 1), "Armenia"));
+                    new SituacionVictimaDto(true, true, "Desplazamiento forzado", LocalDate.of(2015, 1, 1), "Quindío", "Armenia"));
             service.guardarSituacionSocioeconomica(ID,
                     new SituacionSocioeconomicaDto("A3", 1, new BigDecimal("1300000"), "Desempleado", 4, 1));
             service.guardarTrayectoria(ID, new TrayectoriaEducativaDto(NivelEducativo.MEDIA, 11, 2020, List.of()));
@@ -486,7 +486,7 @@ class CaracterizacionServiceTest {
 
             assertThrows(ReglaNegocioException.class, () -> service.guardarSituacionVictima(ID,
                     new SituacionVictimaDto(true, true, "Desplazamiento forzado",
-                            LocalDate.now().minusYears(30), "Florencia")));
+                            LocalDate.now().minusYears(30), "Caquetá", "Florencia")));
         }
 
         @Test
@@ -496,7 +496,7 @@ class CaracterizacionServiceTest {
 
             service.guardarInformacionPersonal(ID, adulto(30));
             service.guardarSituacionVictima(ID,
-                    new SituacionVictimaDto(true, true, "Desplazamiento forzado", LocalDate.of(2015, 1, 1), "Armenia"));
+                    new SituacionVictimaDto(true, true, "Desplazamiento forzado", LocalDate.of(2015, 1, 1), "Quindío", "Armenia"));
             service.guardarSituacionSocioeconomica(ID,
                     new SituacionSocioeconomicaDto("A3", 1, new BigDecimal("1300000"), "Desempleado", 4, 1));
             service.guardarTrayectoria(ID, new TrayectoriaEducativaDto(NivelEducativo.BASICA_SECUNDARIA, 9, 2012, List.of()));
@@ -593,6 +593,36 @@ class CaracterizacionServiceTest {
             assertEquals(ID, evento.getValue().beneficiarioId());
             assertFalse(evento.getValue().perfilCompleto(), "Con 1 de 6 secciones el perfil no está completo");
             assertFalse(evento.getValue().completadoAhora());
+        }
+
+        @Test
+        @DisplayName("HU-05: guarda el departamento y el municipio expulsor con el nombre oficial")
+        void lugarExpulsorNormalizado() {
+            existeBeneficiario();
+
+            PerfilResponse r = service.guardarSituacionVictima(ID, new SituacionVictimaDto(true, true,
+                    "Desplazamiento forzado", LocalDate.of(2015, 1, 1), "caqueta", "san vicente del caguan"));
+
+            assertEquals("Caquetá", r.situacionVictima().departamentoExpulsor());
+            assertEquals("San Vicente del Caguán", r.situacionVictima().municipioExpulsor());
+        }
+
+        @Test
+        @DisplayName("HU-05: rechaza un municipio expulsor que no pertenece al departamento")
+        void municipioExpulsorDeOtroDepartamento() {
+            ReglaNegocioException ex = assertThrows(ReglaNegocioException.class,
+                    () -> service.guardarSituacionVictima(ID, new SituacionVictimaDto(true, true,
+                            "Desplazamiento forzado", LocalDate.of(2015, 1, 1), "Quindío", "Florencia")));
+
+            assertTrue(ex.getMessage().contains("no pertenece al departamento de Quindío"));
+        }
+
+        @Test
+        @DisplayName("HU-05: un municipio expulsor sin departamento no se acepta")
+        void municipioExpulsorSinDepartamento() {
+            assertThrows(ReglaNegocioException.class,
+                    () -> service.guardarSituacionVictima(ID, new SituacionVictimaDto(true, true,
+                            "Desplazamiento forzado", LocalDate.of(2015, 1, 1), null, "Armenia")));
         }
     }
 }
