@@ -41,7 +41,11 @@ import { EtiquetaPipe } from '../../../utils/etiqueta.pipe';
             Versión {{ ruta.version }} ·
             <span class="badge" [class.badge-aviso]="ruta.estado === 'DESACTUALIZADA'">{{ ruta.estado | etiqueta }}</span>
           </p>
-          <p class="suave">{{ ruta.recomendaciones.length }} oportunidades recomendadas</p>
+          @if (ruta.estado === 'DESACTUALIZADA') {
+            <p class="suave">Ninguna oferta coincide con tu perfil actual (intereses y nivel educativo).</p>
+          } @else {
+            <p class="suave">{{ ruta.recomendaciones.length }} oportunidades recomendadas</p>
+          }
         } @else {
           <p class="suave">Aún no has generado una ruta.</p>
         }

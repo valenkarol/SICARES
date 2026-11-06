@@ -22,13 +22,18 @@ import { mensajeError } from '../../../utils/errores';
     </div>
 
     <app-alerta [mensaje]="error" />
-    @if (ruta?.estado === 'DESACTUALIZADA') {
-      <!-- Con el perfil completo la ruta se regenera sola; si sigue desactualizada es porque no hay oferta compatible -->
-      <div class="alerta alerta-aviso">Tu perfil o la oferta cambiaron desde que se generó esta ruta y por ahora no hay
-        oportunidades vigentes compatibles con tu nuevo perfil. Te avisaremos cuando tu ruta se actualice.</div>
-    }
-
-    @if (ruta) {
+    @if (ruta && sinCompatibles) {
+      <!-- Con el perfil completo la ruta se regenera sola; si sigue desactualizada es porque ninguna oferta coincide.
+           Las recomendaciones viejas ya no aplican, así que no se muestran. -->
+      <div class="card vacio">
+        <h3>No hay oportunidades compatibles con tu perfil actual</h3>
+        <p>Ninguna oferta vigente coincide a la vez con tus <strong>áreas de interés</strong>, tu nivel educativo y
+          tus condiciones. Prueba elegir otras áreas en
+          <a routerLink="/beneficiario/caracterizacion">Mi perfil → Intereses</a> o revisa toda la
+          <a routerLink="/beneficiario/oportunidades">oferta educativa</a>. Te avisaremos cuando haya una
+          oportunidad para ti.</p>
+      </div>
+    } @else if (ruta) {
       <p class="suave">Versión {{ ruta.version }} · generada el {{ ruta.fechaGeneracion | date: 'dd/MM/yyyy HH:mm' }}
         · se actualiza automáticamente cuando cambias tu perfil</p>
 
@@ -89,6 +94,11 @@ export class RutasEducativasComponent implements OnInit {
 
   ruta: RutaEducativa | null = null;
   error: string | null = null;
+
+  /** La ruta quedó desactualizada (cambió el perfil) y no hay ninguna oferta que coincida: no se muestra nada. */
+  get sinCompatibles(): boolean {
+    return !!this.ruta && (this.ruta.estado === 'DESACTUALIZADA' || this.ruta.recomendaciones.length === 0);
+  }
   cargando = false;
   seleccionando = false;
 
