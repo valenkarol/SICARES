@@ -7,25 +7,26 @@ import org.springframework.stereotype.Component;
 
 import java.text.Normalizer;
 
-/** Compara el área de conocimiento del programa con los intereses profesionales del usuario. */
 @Component
 public class ReglaIntereses implements ReglaCompatibilidad {
 
     @Override
     public ResultadoEvaluacion evaluar(PerfilEducativo perfil, OportunidadEducativa op) {
         String area = normalizar(op.getPrograma().getAreaConocimiento());
-
+        if (area.isEmpty()) {
+            return ResultadoEvaluacion.noCumple("El programa no tiene área de conocimiento registrada");
+        }
         for (InteresProfesional i : perfil.getIntereses()) {
             String interes = normalizar(i.getAreaConocimiento());
+            if (interes.isEmpty()) {
+                continue;   // un interés vacío no debe coincidir con todo ("" está contenido en cualquier texto)
+            }
             if (area.equals(interes) || area.contains(interes) || interes.contains(area)) {
                 return ResultadoEvaluacion.cumple(1.0, "Coincide con tu interés en " + i.getAreaConocimiento());
             }
         }
-        if (area.contains("formacion general")) {
-            // Primaria, secundaria y media son base para cualquier interés
-            return ResultadoEvaluacion.cumple(0.8, "Formación básica necesaria para avanzar hacia tus intereses");
-        }
-        return ResultadoEvaluacion.cumple(0.3);
+        return ResultadoEvaluacion.noCumple("El área " + op.getPrograma().getAreaConocimiento()
+                + " no está entre tus intereses");
     }
 
     private static String normalizar(String s) {
@@ -43,6 +44,6 @@ public class ReglaIntereses implements ReglaCompatibilidad {
 
     @Override
     public boolean esEliminatoria() {
-        return false;
+        return true;
     }
 }
