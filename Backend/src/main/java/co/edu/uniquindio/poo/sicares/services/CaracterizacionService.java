@@ -115,6 +115,9 @@ public class CaracterizacionService {
         if (dto.esVictima() && (dto.hechoVictimizante() == null || dto.hechoVictimizante().isBlank())) {
             throw new ReglaNegocioException("Indica el hecho victimizante");
         }
+        String[] expulsor = dto.esVictima()
+                ? validarLugarExpulsor(dto.departamentoExpulsor(), dto.municipioExpulsor())
+                : new String[]{null, null};
         Beneficiario b = buscarBeneficiarioConAutorizacion(beneficiarioId);
         PerfilEducativo perfil = b.obtenerOCrearPerfil();
 
@@ -123,7 +126,8 @@ public class CaracterizacionService {
         v.setInscritoRUV(dto.inscritoRUV());
         v.setHechoVictimizante(dto.esVictima() ? dto.hechoVictimizante() : null);
         v.setFechaHecho(dto.esVictima() ? dto.fechaHecho() : null);
-        v.setMunicipioExpulsor(dto.esVictima() ? dto.municipioExpulsor() : null);
+        v.setDepartamentoExpulsor(expulsor[0]);
+        v.setMunicipioExpulsor(expulsor[1]);
         perfil.setSituacionVictima(v);
 
         return finalizarCambio(b);
@@ -284,6 +288,30 @@ public class CaracterizacionService {
         if (r.numeroDocumento().equals(dto.numeroDocumento())) {
             throw new ReglaNegocioException("El documento del responsable no puede ser el mismo del beneficiario");
         }
+    }
+
+    /**
+     * Lugar expulsor (opcional): si se indica el municipio, el departamento es obligatorio y el municipio debe
+     * pertenecer a él. Devuelve {departamento, municipio} con los nombres oficiales (o null si no se indicaron).
+     */
+    static String[] validarLugarExpulsor(String departamento, String municipio) {
+        boolean hayDepartamento = departamento != null && !departamento.isBlank();
+        boolean hayMunicipio = municipio != null && !municipio.isBlank();
+        if (!hayDepartamento && !hayMunicipio) {
+            return new String[]{null, null};
+        }
+        if (!hayDepartamento) {
+            throw new ReglaNegocioException("Selecciona el departamento del municipio expulsor");
+        }
+        Departamento d = Departamento.buscar(departamento)
+                .orElseThrow(() -> new ReglaNegocioException("Selecciona un departamento expulsor de la lista"));
+        if (!hayMunicipio) {
+            return new String[]{d.getNombre(), null};
+        }
+        String m = d.buscarMunicipio(municipio)
+                .orElseThrow(() -> new ReglaNegocioException("El municipio expulsor \"" + municipio.trim()
+                        + "\" no pertenece al departamento de " + d.getNombre()));
+        return new String[]{d.getNombre(), m};
     }
 
     /** Cédula: 6 a 10 dígitos. Tarjeta de identidad (NUIP): 10 u 11 dígitos. Solo números. */

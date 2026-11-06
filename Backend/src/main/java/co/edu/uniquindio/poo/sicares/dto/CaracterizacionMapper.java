@@ -31,7 +31,7 @@ public final class CaracterizacionMapper {
     public static CaracterizacionDtos.SituacionVictimaDto toDto(SituacionVictima v) {
         if (v == null) return null;
         return new CaracterizacionDtos.SituacionVictimaDto(v.isEsVictima(), v.isInscritoRUV(), v.getHechoVictimizante(),
-                v.getFechaHecho(), v.getMunicipioExpulsor());
+                v.getFechaHecho(), v.getDepartamentoExpulsor(), v.getMunicipioExpulsor());
     }
 
     public static CaracterizacionDtos.SituacionSocioeconomicaDto toDto(SituacionSocioeconomica s) {

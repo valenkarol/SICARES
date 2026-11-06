@@ -63,6 +63,8 @@ public final class CaracterizacionDtos {
             boolean inscritoRUV,
             @Size(max = 100) String hechoVictimizante,
             @PastOrPresent LocalDate fechaHecho,
+            // municipios (enum Departamento)
+            @Size(max = 60) String departamentoExpulsor,
             @Size(max = 60) String municipioExpulsor
     ) {
     }

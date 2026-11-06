@@ -31,6 +31,12 @@ public class SituacionVictima {
     @Column(name = "fecha_hecho")
     private LocalDate fechaHecho;
 
+    /** Departamento del municipio expulsor (nombre oficial del enum Departamento). */
+    @Column(name = "departamento_expulsor", length = 60)
+    private String departamentoExpulsor;
+
+    /** Municipio de donde fue desplazado; debe pertenecer a departamentoExpulsor. */
     @Column(name = "municipio_expulsor", length = 60)
     private String municipioExpulsor;
 }
+
