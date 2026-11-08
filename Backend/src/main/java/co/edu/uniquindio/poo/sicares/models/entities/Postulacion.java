@@ -15,11 +15,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Postulacion (paquete "Postulación y seguimiento")
- *  - Beneficiario 1 "Realiza" 0..* Postulacion
- *  - 0..* "a" 1 OportunidadEducativa
- *  - 0..* "Se origina en" 0..1 Recomendacion
- *  - 1 ◆── 0..* DocumentoPostulacion, 1..* HistorialEstado, 0..* Recordatorio, 0..* Notificacion
+ * Postulacion
  */
 @Entity
 @Table(name = "postulaciones")
@@ -70,17 +66,25 @@ public class Postulacion {
 
     /** Primer registro del historial: la oportunidad fue seleccionada (HistorialEstado 1..*). */
     public void iniciar(Usuario responsable) {
+        iniciar(responsable, "Oportunidad seleccionada desde la ruta educativa");
+    }
+
+    /**
+     * Auditoría
+     * Se usa cuando el beneficiario se postula desde el catálogo de "Ofertas" sin pasar por su ruta.
+     */
+    public void iniciar(Usuario responsable, String observacion) {
         HistorialEstado h = new HistorialEstado();
         h.setPostulacion(this);
         h.setEstadoAnterior(null);
         h.setEstadoNuevo(EstadoPostulacion.SELECCIONADA);
-        h.setObservacion("Oportunidad seleccionada desde la ruta educativa");
+        h.setObservacion(observacion);
         h.setResponsable(responsable);
         historial.add(h);
     }
 
     /**
-     * Registra formalmente la postulación (HU-23).
+     * Registra formalmente la postulación .
      * Si faltan documentos obligatorios la deja en DOCUMENTOS_PENDIENTES y devuelve false.
      * Si está todo completo pasa a POSTULADA y devuelve true.
      */

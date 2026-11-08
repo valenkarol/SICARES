@@ -2,6 +2,7 @@ package co.edu.uniquindio.poo.sicares.controllers;
 
 import co.edu.uniquindio.poo.sicares.dto.PostulacionDtos.*;
 import co.edu.uniquindio.poo.sicares.security.UsuarioActual;
+import co.edu.uniquindio.poo.sicares.services.PostulacionDirectaService;
 import co.edu.uniquindio.poo.sicares.services.PostulacionService;
 import co.edu.uniquindio.poo.sicares.services.PostulacionService.ArchivoDescarga;
 import jakarta.validation.Valid;
@@ -25,12 +26,26 @@ import java.util.List;
 public class PostulacionController {
 
     private final PostulacionService postulacionService;
+    private final PostulacionDirectaService postulacionDirectaService;
 
     /** HU-20 Seleccionar oportunidad de la ruta. */
     @PostMapping("/postulaciones")
     @ResponseStatus(HttpStatus.CREATED)
     public PostulacionResponse seleccionar(@Valid @RequestBody SeleccionarOportunidadRequest req) {
         return postulacionService.seleccionarOportunidad(UsuarioActual.id(), req.recomendacionId());
+    }
+
+    /** Auditoría: postularse desde el catálogo de ofertas (sin pasar por la ruta). */
+    @PostMapping("/postulaciones/oportunidad/{oportunidadId}")
+    @ResponseStatus(HttpStatus.CREATED)
+    public PostulacionResponse postularDesdeCatalogo(@PathVariable Long oportunidadId) {
+        return postulacionDirectaService.postularDesdeCatalogo(UsuarioActual.id(), oportunidadId);
+    }
+
+    /** Auditoría: requisitos que cumple (o no) en cada convocatoria del catálogo. */
+    @GetMapping("/oportunidades/elegibilidad")
+    public List<ElegibilidadResponse> elegibilidad() {
+        return postulacionDirectaService.elegibilidad(UsuarioActual.id());
     }
 
     @GetMapping("/postulaciones")

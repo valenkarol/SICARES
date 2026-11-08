@@ -95,4 +95,12 @@ public final class PostulacionDtos {
             Long postulacionId
     ) {
     }
+
+    /** Auditoría: el beneficiario puede postularse a esta convocatoria del catálogo */
+    public record ElegibilidadResponse(
+            Long oportunidadId,
+            boolean puedePostularse,
+            String motivo
+    ) {
+    }
 }
