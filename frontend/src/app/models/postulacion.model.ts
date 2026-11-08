@@ -39,6 +39,13 @@ export interface Recordatorio {
   postulacionId: number;
 }
 
+/** Auditoría - Plan de mejoramiento #2: ¿puede postularse a esta convocatoria del catálogo? */
+export interface Elegibilidad {
+  oportunidadId: number;
+  puedePostularse: boolean;
+  motivo: string | null;
+}
+
 export interface Postulacion {
   id: number;
   fechaSeleccion: string;

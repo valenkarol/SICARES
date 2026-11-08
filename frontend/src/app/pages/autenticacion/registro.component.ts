@@ -26,12 +26,29 @@ import { mensajeError } from '../../utils/errores';
             </div>
             <div class="campo">
               <label for="contrasena">Contraseña</label>
-              <input id="contrasena" name="contrasena" type="password" [(ngModel)]="contrasena" required minlength="8" />
+              <!-- Auditoría - Plan de mejoramiento #3: botón "ojo" siempre visible -->
+              <div class="campo-clave">
+                <input id="contrasena" name="contrasena" [type]="verContrasena ? 'text' : 'password'"
+                       [(ngModel)]="contrasena" required minlength="8" autocomplete="new-password" />
+                <button type="button" class="ver-clave" (click)="verContrasena = !verContrasena"
+                        [attr.aria-label]="verContrasena ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+                        [attr.aria-pressed]="verContrasena" [title]="verContrasena ? 'Ocultar contraseña' : 'Mostrar contraseña'">
+                  {{ verContrasena ? '🙈' : '👁' }}
+                </button>
+              </div>
               <span class="suave">Mínimo 8 caracteres, con mayúscula, minúscula y número.</span>
             </div>
             <div class="campo">
               <label for="confirmar">Confirmar contraseña</label>
-              <input id="confirmar" name="confirmar" type="password" [(ngModel)]="confirmar" required />
+              <div class="campo-clave">
+                <input id="confirmar" name="confirmar" [type]="verConfirmar ? 'text' : 'password'"
+                       [(ngModel)]="confirmar" required autocomplete="new-password" />
+                <button type="button" class="ver-clave" (click)="verConfirmar = !verConfirmar"
+                        [attr.aria-label]="verConfirmar ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+                        [attr.aria-pressed]="verConfirmar" [title]="verConfirmar ? 'Ocultar contraseña' : 'Mostrar contraseña'">
+                  {{ verConfirmar ? '🙈' : '👁' }}
+                </button>
+              </div>
             </div>
 
             <div class="politica">
@@ -78,6 +95,9 @@ export class RegistroComponent {
   contrasena = '';
   confirmar = '';
   acepta = false;
+  /** Auditoría - Plan de mejoramiento #3: mostrar / ocultar lo que se digita. */
+  verContrasena = false;
+  verConfirmar = false;
   error: string | null = null;
   cargando = false;
 

@@ -1,5 +1,4 @@
 /* ===== Estilos globales de SICARES =====
-   Paleta tomada del documento C.SICARES_UI_v1.0 (Interfaces de Usuario):
    - Azul marino  #012060  barras, botones principales, títulos
    - Rosa / lila  #E799FF  marca "SICARES", botones de acento, menú
    - Morado       #81007F  iconos de tarjetas, chips, pestaña activa
@@ -90,6 +89,19 @@ a { color: var(--acero); }
   outline: 3px solid var(--rosa-medio); border-color: var(--morado);
 }
 .campo input.ng-touched.ng-invalid, .campo select.ng-touched.ng-invalid { border-color: var(--error); }
+/* Auditoría - Plan de mejoramiento #3: campo de contraseña con botón "ojo" siempre visible */
+.campo-clave { position: relative; display: flex; }
+.campo-clave input { flex: 1; padding-right: 46px; }
+.campo-clave .ver-clave {
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  width: 38px; height: 34px; border: none; background: transparent; cursor: pointer;
+  font-size: 1.15rem; line-height: 1; border-radius: 6px; color: var(--marino);
+}
+.campo-clave .ver-clave:hover { background: var(--azul-palido); }
+.campo-clave .ver-clave:focus-visible { outline: 3px solid var(--rosa-medio); }
+/* Oculta el "ojo" nativo de Edge, que solo aparece a ratos y se duplicaba con el nuestro */
+.campo-clave input::-ms-reveal, .campo-clave input::-ms-clear { display: none; }
+
 .check { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
 .check input { accent-color: var(--marino); }
 

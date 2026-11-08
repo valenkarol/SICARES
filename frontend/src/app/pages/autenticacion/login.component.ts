@@ -28,8 +28,16 @@ import { mensajeError } from '../../utils/errores';
             </div>
             <div class="campo">
               <label for="contrasena">Contraseña</label>
-              <input id="contrasena" name="contrasena" type="password" [(ngModel)]="contrasena" required
-                     autocomplete="current-password" />
+              <!-- Auditoría - Plan de mejoramiento #3: botón "ojo" siempre visible -->
+              <div class="campo-clave">
+                <input id="contrasena" name="contrasena" [type]="verContrasena ? 'text' : 'password'"
+                       [(ngModel)]="contrasena" required autocomplete="current-password" />
+                <button type="button" class="ver-clave" (click)="verContrasena = !verContrasena"
+                        [attr.aria-label]="verContrasena ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+                        [attr.aria-pressed]="verContrasena" [title]="verContrasena ? 'Ocultar contraseña' : 'Mostrar contraseña'">
+                  {{ verContrasena ? '🙈' : '👁' }}
+                </button>
+              </div>
             </div>
             <button class="btn ancho" type="submit" [disabled]="f.invalid || cargando">
               {{ cargando ? 'Ingresando...' : 'Iniciar sesión' }}
@@ -63,6 +71,8 @@ export class LoginComponent {
 
   correo = '';
   contrasena = '';
+  /** Auditoría - Plan de mejoramiento #3: mostrar / ocultar lo que se digita. */
+  verContrasena = false;
   error: string | null = null;
   cargando = false;
 

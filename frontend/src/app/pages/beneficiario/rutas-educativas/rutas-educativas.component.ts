@@ -32,10 +32,16 @@ import { mensajeError } from '../../../utils/errores';
           <a routerLink="/beneficiario/caracterizacion">Mi perfil → Intereses</a> o revisa toda la
           <a routerLink="/beneficiario/oportunidades">oferta educativa</a>. Te avisaremos cuando haya una
           oportunidad para ti.</p>
+        <!-- Auditoría - Plan de mejoramiento #2: salida directa al catálogo libre -->
+        <p>También puedes <strong>postularte a cualquier programa</strong>, aunque no esté entre tus intereses.</p>
+        <a class="btn" routerLink="/beneficiario/oportunidades">Explorar toda la oferta y postularme</a>
       </div>
     } @else if (ruta) {
       <p class="suave">Versión {{ ruta.version }} · generada el {{ ruta.fechaGeneracion | date: 'dd/MM/yyyy HH:mm' }}
         · se actualiza automáticamente cuando cambias tu perfil</p>
+      <!-- Auditoría - Plan de mejoramiento #2 -->
+      <p class="suave">¿Buscas algo distinto? <a routerLink="/beneficiario/oportunidades">Explora toda la oferta
+        educativa</a> y postúlate a cualquier programa, aunque no esté entre tus intereses.</p>
 
       @for (r of ruta.recomendaciones; track r.id) {
         <div class="card recomendacion">
@@ -77,6 +83,9 @@ import { mensajeError } from '../../../utils/errores';
         <p>Aún no tienes una ruta educativa.</p>
         <p>Completa tu <a routerLink="/beneficiario/caracterizacion">caracterización</a> al 100%: tu ruta se genera
           automáticamente (también puedes presionar “Generar mi ruta”).</p>
+        <!-- Auditoría - Plan de mejoramiento #2 -->
+        <p>Mientras tanto, puedes revisar y postularte a cualquier programa de la oferta educativa.</p>
+        <a class="btn btn-sec" routerLink="/beneficiario/oportunidades">Explorar toda la oferta</a>
       </div>
     }
   `,

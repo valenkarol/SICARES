@@ -2,7 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_URL } from '../config/api.config';
-import { EstadoPostulacion, Postulacion, Recordatorio } from '../models/postulacion.model';
+import { Elegibilidad, EstadoPostulacion, Postulacion, Recordatorio } from '../models/postulacion.model';
 
 /** Proceso 3: Postulación y seguimiento (HU-20 a HU-26). */
 @Injectable({ providedIn: 'root' })
@@ -13,6 +13,16 @@ export class PostulacionService {
   // ---------- Beneficiario
   seleccionar(recomendacionId: number): Observable<Postulacion> {
     return this.http.post<Postulacion>(`${this.url}/postulaciones`, { recomendacionId });
+  }
+
+  /** Auditoría - Plan de mejoramiento #2: postularse desde el catálogo de ofertas (sin ruta). */
+  postularDesdeCatalogo(oportunidadId: number): Observable<Postulacion> {
+    return this.http.post<Postulacion>(`${this.url}/postulaciones/oportunidad/${oportunidadId}`, {});
+  }
+
+  /** Requisitos que cumple (o no) en cada convocatoria vigente, con el motivo. */
+  elegibilidad(): Observable<Elegibilidad[]> {
+    return this.http.get<Elegibilidad[]>(`${this.url}/oportunidades/elegibilidad`);
   }
 
   listar(): Observable<Postulacion[]> {
