@@ -9,6 +9,12 @@
 set -euo pipefail
 ORIGEN="${1:-/home/${SUDO_USER:-$USER}}"
 
+# Auditoría - Plan de mejoramiento #1: respaldo automático ANTES de publicar una versión nueva
+if [[ -x /opt/sicares/bin/respaldar-bd.sh ]]; then
+  echo "== Respaldo previo de la base de datos y documentos"
+  bash /opt/sicares/bin/respaldar-bd.sh && echo "Respaldo OK (ver /var/log/sicares/respaldo.log)"
+fi
+
 if [[ -f "$ORIGEN/sicares.jar" ]]; then
   echo "== Backend: instalando sicares.jar"
   cp "$ORIGEN/sicares.jar" /opt/sicares/sicares.jar
